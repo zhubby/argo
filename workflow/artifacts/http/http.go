@@ -1,13 +1,14 @@
 package http
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/argoproj/argo/errors"
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/errors"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
 )
 
 // HTTPArtifactDriver is the artifact driver for a HTTP URL
@@ -17,6 +18,11 @@ type HTTPArtifactDriver struct{}
 func (h *HTTPArtifactDriver) Load(inputArtifact *wfv1.Artifact, path string) error {
 	// Download the file to a local file path
 	args := []string{"-fsS", "-L", "-o", path, inputArtifact.HTTP.URL}
+	headers := inputArtifact.HTTP.Headers
+	for _, v := range headers {
+		// Build curl -H string for each key-value header parameter
+		args = append(args, "-H", fmt.Sprintf("%s: %s", v.Name, v.Value))
+	}
 	log.Info(strings.Join(append([]string{"curl"}, args...), " "))
 	cmd := exec.Command("curl", args...)
 	output, err := cmd.CombinedOutput()

@@ -9,11 +9,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/argoproj/argo/cmd/argo/commands/client"
-	workflowtemplatepkg "github.com/argoproj/argo/pkg/apiclient/workflowtemplate"
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	cmdutil "github.com/argoproj/argo/util/cmd"
-	"github.com/argoproj/argo/workflow/validate"
+	"github.com/argoproj/argo/v3/cmd/argo/commands/client"
+	workflowtemplatepkg "github.com/argoproj/argo/v3/pkg/apiclient/workflowtemplate"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	cmdutil "github.com/argoproj/argo/v3/util/cmd"
+	"github.com/argoproj/argo/v3/workflow/validate"
 )
 
 func NewLintCommand() *cobra.Command {
@@ -24,6 +24,10 @@ func NewLintCommand() *cobra.Command {
 		Use:   "lint (DIRECTORY | FILE1 FILE2 FILE3...)",
 		Short: "validate a file or directory of workflow template manifests",
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) == 0 {
+				cmd.HelpFunc()(cmd, args)
+				os.Exit(1)
+			}
 			err := ServerSideLint(args, strict)
 			if err != nil {
 				log.Fatal(err)
@@ -77,7 +81,11 @@ func ServerSideLint(args []string, strict bool) error {
 			}
 			return nil
 		}
-		return filepath.Walk(args[0], walkFunc)
+		err := filepath.Walk(args[0], walkFunc)
+		if err != nil {
+			log.Error(err)
+			invalid = true
+		}
 	} else {
 		for _, arg := range args {
 			wfTmpls, err := validate.ParseWfTmplFromFile(arg, strict)

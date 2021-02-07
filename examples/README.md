@@ -46,8 +46,7 @@ In case you want to follow along with this walkthrough, here's a quick overview 
 argo submit hello-world.yaml    # submit a workflow spec to Kubernetes
 argo list                       # list current workflows
 argo get hello-world-xxx        # get info about a specific workflow
-argo logs -w hello-world-xxx    # get logs from all steps in a workflow
-argo logs hello-world-xxx-yyy   # get logs from a specific step in a workflow
+argo logs hello-world-xxx       # print the logs from a workflow
 argo delete hello-world-xxx     # delete workflow
 ```
 
@@ -66,7 +65,7 @@ kubectl delete wf hello-world-xxx
 
 Let's start by creating a very simple workflow template to echo "hello world" using the docker/whalesay container image from DockerHub.
 
-You can run this directly from your shell with a simple docker command:
+You can run this directly from your shell with a simple docker command:
 
 ```sh
 $ docker run docker/whalesay cowsay "hello world"
@@ -257,11 +256,11 @@ spec:
 The above workflow spec prints three different flavors of "hello". The `hello-hello-hello` template consists of three `steps`. The first step named `hello1` will be run in sequence whereas the next two steps named `hello2a` and `hello2b` will be run in parallel with each other. Using the argo CLI command, we can graphically display the execution history of this workflow spec, which shows that the steps named `hello2a` and `hello2b` ran in parallel with each other.
 
 ```sh
-STEP                                     PODNAME
- ✔ arguments-parameters-rbm92
- ├---✔ hello1                   steps-rbm92-2023062412
- └-·-✔ hello2a                  steps-rbm92-685171357
-   └-✔ hello2b                  steps-rbm92-634838500
+STEP            TEMPLATE           PODNAME                 DURATION  MESSAGE
+ ✔ steps-z2zdn  hello-hello-hello
+ ├───✔ hello1   whalesay           steps-z2zdn-27420706    2s
+ └─┬─✔ hello2a  whalesay           steps-z2zdn-2006760091  3s
+   └─✔ hello2b  whalesay           steps-z2zdn-2023537710  3s
 ```
 
 ## DAG
@@ -802,6 +801,8 @@ spec:
         duration: "1"      # Must be a string. Default unit is seconds. Could also be a Duration, e.g.: "2m", "6h", "1d"
         factor: 2
         maxDuration: "1m"  # Must be a string. Default unit is seconds. Could also be a Duration, e.g.: "2m", "6h", "1d"
+      affinity:
+        nodeAntiAffinity: {}
     container:
       image: python:alpine3.6
       command: ["python", -c]
@@ -812,6 +813,7 @@ spec:
 * `limit` is the maximum number of times the container will be retried.
 * `retryPolicy` specifies if a container will be retried on failure, error, or both. "Always" retries on both errors and failures. Also available: "OnFailure" (default), "OnError"
 * `backoff` is an exponential backoff
+* `nodeAntiAffinity` prevents running steps on the same host.  Current implementation allows only empty `nodeAntiAffinity` (i.e. `nodeAntiAffinity: {}`) and by default it uses label `kubernetes.io/hostname` as the selector.
 
 Providing an empty `retryStrategy` (i.e. `retryStrategy: {}`) will cause a container to retry until completion.
 
@@ -864,24 +866,24 @@ argo get coinflip-recursive-tzcb5
 
 STEP                         PODNAME                              MESSAGE
  ✔ coinflip-recursive-vhph5
- ├---✔ flip-coin             coinflip-recursive-vhph5-2123890397
- └-·-✔ heads                 coinflip-recursive-vhph5-128690560
-   └-○ tails
+ ├───✔ flip-coin             coinflip-recursive-vhph5-2123890397
+ └─┬─✔ heads                 coinflip-recursive-vhph5-128690560
+   └─○ tails
 
 STEP                          PODNAME                              MESSAGE
  ✔ coinflip-recursive-tzcb5
- ├---✔ flip-coin              coinflip-recursive-tzcb5-322836820
- └-·-○ heads
-   └-✔ tails
-     ├---✔ flip-coin          coinflip-recursive-tzcb5-1863890320
-     └-·-○ heads
-       └-✔ tails
-         ├---✔ flip-coin      coinflip-recursive-tzcb5-1768147140
-         └-·-○ heads
-           └-✔ tails
-             ├---✔ flip-coin  coinflip-recursive-tzcb5-4080411136
-             └-·-✔ heads      coinflip-recursive-tzcb5-4080323273
-               └-○ tails
+ ├───✔ flip-coin              coinflip-recursive-tzcb5-322836820
+ └─┬─○ heads
+   └─✔ tails
+     ├───✔ flip-coin          coinflip-recursive-tzcb5-1863890320
+     └─┬─○ heads
+       └─✔ tails
+         ├───✔ flip-coin      coinflip-recursive-tzcb5-1768147140
+         └─┬─○ heads
+           └─✔ tails
+             ├───✔ flip-coin  coinflip-recursive-tzcb5-4080411136
+             └─┬─✔ heads      coinflip-recursive-tzcb5-4080323273
+               └─○ tails
 ```
 
 In the first run, the coin immediately comes up heads and we stop. In the second run, the coin comes up tail three times before it finally comes up heads and we stop.
@@ -904,7 +906,7 @@ metadata:
   generateName: exit-handlers-
 spec:
   entrypoint: intentional-fail
-  onExit: exit-handler                  # invoke exit-hander template at end of the workflow
+  onExit: exit-handler                  # invoke exit-handler template at end of the workflow
   templates:
   # primary workflow template
   - name: intentional-fail
@@ -1097,36 +1099,36 @@ spec:
         arguments:
           parameters:
             - name: pvc-name
-              value: '{{ steps.generate-volume.outputs.parameters.pvc-name }}'
+              value: '{{steps.generate-volume.outputs.parameters.pvc-name}}'
     - - name: print
         template: print-message
         arguments:
           parameters:
             - name: pvc-name
-              value: '{{ steps.generate-volume.outputs.parameters.pvc-name }}'
+              value: '{{steps.generate-volume.outputs.parameters.pvc-name}}'
 
   - name: generate-volume
     inputs:
       parameters:
         - name: pvc-size
-      resource:
-        action: create
-        setOwnerReference: true
-        manifest: |
-          apiVersion: v1
-          kind: PersistentVolumeClaim
-          metadata:
-            generateName: pvc-example-
-          spec:
-            accessModes: ['ReadWriteOnce', 'ReadOnlyMany']
-            resources:
-              requests:
-                storage: '{{inputs.parameters.pvc-size}}'
-      outputs:
-        parameters:
-          - name: pvc-name
-            valueFrom:
-              jsonPath: '{.metadata.name}'
+    resource:
+      action: create
+      setOwnerReference: true
+      manifest: |
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          generateName: pvc-example-
+        spec:
+          accessModes: ['ReadWriteOnce', 'ReadOnlyMany']
+          resources:
+            requests:
+              storage: '{{inputs.parameters.pvc-size}}'
+    outputs:
+      parameters:
+        - name: pvc-name
+          valueFrom:
+            jsonPath: '{.metadata.name}'
 
   - name: whalesay
     inputs:
@@ -1286,7 +1288,7 @@ spec:
           cpu: 100m
 ```
 
-DAG templates use the tasks prefix to refer to another task, for example `{{tasks.influx.ip}}`.
+Step templates use the `steps` prefix to refer to another step: for example `{{steps.influx.ip}}`. In DAG templates, the `tasks` prefix is used instead: for example `{{tasks.influx.ip}}`.
 
 ## Sidecars
 
@@ -1455,7 +1457,7 @@ spec:
   templates:
   - name: dind-sidecar-example
     container:
-      image: docker:17.10
+      image: docker:19.03.13
       command: [sh, -c]
       args: ["until docker ps; do sleep 3; done; docker run --rm debian:latest cat /etc/os-release"]
       env:
@@ -1463,7 +1465,10 @@ spec:
         value: 127.0.0.1
     sidecars:
     - name: dind
-      image: docker:17.10-dind          # Docker already provides an image for running a Docker daemon
+      image: docker:19.03.13-dind          # Docker already provides an image for running a Docker daemon
+      env:
+        - name: DOCKER_TLS_CERTDIR         # Docker TLS env config
+          value: ""
       securityContext:
         privileged: true                # the Docker daemon can only run in a privileged container
       # mirrorVolumeMounts will mount the same volumes specified in the main container

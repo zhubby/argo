@@ -3,9 +3,11 @@ package controller
 import (
 	"strings"
 
-	"github.com/argoproj/argo/errors"
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/workflow/common"
+	"github.com/valyala/fasttemplate"
+
+	"github.com/argoproj/argo/v3/errors"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/workflow/common"
 )
 
 // wfScope contains the current scope of variables available when executing a template
@@ -67,8 +69,10 @@ func (s *wfScope) resolveParameter(v string) (string, error) {
 	return valStr, nil
 }
 
-func (s *wfScope) resolveArtifact(v string) (*wfv1.Artifact, error) {
+func (s *wfScope) resolveArtifact(v string, subPath string) (*wfv1.Artifact, error) {
+
 	val, err := s.resolveVar(v)
+
 	if err != nil {
 		return nil, err
 	}
@@ -76,5 +80,18 @@ func (s *wfScope) resolveArtifact(v string) (*wfv1.Artifact, error) {
 	if !ok {
 		return nil, errors.Errorf(errors.CodeBadRequest, "Variable {{%s}} is not an artifact", v)
 	}
+
+	if subPath != "" {
+		fstTmpl := fasttemplate.New(subPath, "{{", "}}")
+		resolvedSubPath, err := common.Replace(fstTmpl, s.getParameters(), true)
+		if err != nil {
+			return nil, err
+		}
+
+		// Copy resolved artifact pointer before adding subpath
+		copyArt := valArt.DeepCopy()
+		return copyArt, copyArt.AppendToKey(resolvedSubPath)
+	}
+
 	return &valArt, nil
 }

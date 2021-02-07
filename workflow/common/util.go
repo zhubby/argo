@@ -2,12 +2,14 @@ package common
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -19,15 +21,18 @@ import (
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/yaml"
 
-	"github.com/argoproj/argo/errors"
-	"github.com/argoproj/argo/pkg/apis/workflow"
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/util"
+	"github.com/argoproj/argo/v3/errors"
+	"github.com/argoproj/argo/v3/pkg/apis/workflow"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/util"
+	errorsutil "github.com/argoproj/argo/v3/util/errors"
+	waitutil "github.com/argoproj/argo/v3/util/wait"
 )
 
 // FindOverlappingVolume looks an artifact path, checks if it overlaps with any
@@ -259,8 +264,7 @@ func ProcessArgs(tmpl *wfv1.Template, args wfv1.ArgumentsProvider, globalParams,
 		// overwrite value from argument (if supplied)
 		argParam := args.GetParameterByName(inParam.Name)
 		if argParam != nil && argParam.Value != nil {
-			newValue := *argParam.Value
-			inParam.Value = &newValue
+			inParam.Value = argParam.Value
 		}
 		if inParam.Value == nil {
 			return nil, errors.Errorf(errors.CodeBadRequest, "inputs.parameters.%s was not supplied", inParam.Name)
@@ -269,11 +273,10 @@ func ProcessArgs(tmpl *wfv1.Template, args wfv1.ArgumentsProvider, globalParams,
 	}
 
 	// Performs substitutions of input artifacts
-	newInputArtifacts := make([]wfv1.Artifact, len(newTmpl.Inputs.Artifacts))
-	for i, inArt := range newTmpl.Inputs.Artifacts {
+	artifacts := newTmpl.Inputs.Artifacts
+	for i, inArt := range artifacts {
 		// if artifact has hard-wired location, we prefer that
-		if inArt.HasLocation() {
-			newInputArtifacts[i] = inArt
+		if inArt.HasLocationOrKey() {
 			continue
 		}
 		argArt := args.GetArtifactByName(inArt.Name)
@@ -282,19 +285,17 @@ func ProcessArgs(tmpl *wfv1.Template, args wfv1.ArgumentsProvider, globalParams,
 			if argArt == nil {
 				return nil, errors.Errorf(errors.CodeBadRequest, "inputs.artifacts.%s was not supplied", inArt.Name)
 			}
-			if !argArt.HasLocation() && !validateOnly {
+			if !argArt.HasLocationOrKey() && !validateOnly {
 				return nil, errors.Errorf(errors.CodeBadRequest, "inputs.artifacts.%s missing location information", inArt.Name)
 			}
 		}
 		if argArt != nil {
-			argArt.Path = inArt.Path
-			argArt.Mode = inArt.Mode
-			newInputArtifacts[i] = *argArt
-		} else {
-			newInputArtifacts[i] = inArt
+			artifacts[i] = *argArt
+			artifacts[i].Path = inArt.Path
+			artifacts[i].Mode = inArt.Mode
+			artifacts[i].RecurseMode = inArt.RecurseMode
 		}
 	}
-	newTmpl.Inputs.Artifacts = newInputArtifacts
 
 	return SubstituteParams(newTmpl, globalParams, localParams)
 }
@@ -372,7 +373,7 @@ func SubstituteParams(tmpl *wfv1.Template, globalParams, localParams Parameters)
 func Replace(fstTmpl *fasttemplate.Template, replaceMap map[string]string, allowUnresolved bool) (string, error) {
 	var unresolvedErr error
 	replacedTmpl := fstTmpl.ExecuteFuncString(func(w io.Writer, tag string) (int, error) {
-		replacement, ok := replaceMap[tag]
+		replacement, ok := replaceMap[strings.TrimSpace(tag)]
 		if !ok {
 			// Attempt to resolve nested tags, if possible
 			if index := strings.LastIndex(tag, "{{"); index > 0 {
@@ -404,36 +405,68 @@ func Replace(fstTmpl *fasttemplate.Template, replaceMap map[string]string, allow
 }
 
 // RunCommand is a convenience function to run/log a command and log the stderr upon failure
-func RunCommand(name string, arg ...string) error {
+func RunCommand(name string, arg ...string) ([]byte, error) {
 	cmd := exec.Command(name, arg...)
 	cmdStr := strings.Join(cmd.Args, " ")
 	log.Info(cmdStr)
-	_, err := cmd.Output()
+	out, err := cmd.Output()
 	if err != nil {
 		if exErr, ok := err.(*exec.ExitError); ok {
 			errOutput := string(exErr.Stderr)
 			log.Errorf("`%s` failed: %s", cmdStr, errOutput)
-			return errors.InternalError(strings.TrimSpace(errOutput))
+			return nil, errors.InternalError(strings.TrimSpace(errOutput))
 		}
-		return errors.InternalWrapError(err)
+		return nil, errors.InternalWrapError(err)
 	}
-	return nil
+	return out, nil
 }
 
-const patchRetries = 5
+// RunShellCommand is a convenience function to use RunCommand for shell executions. It's os-specific
+// and runs `cmd` in windows.
+func RunShellCommand(arg ...string) ([]byte, error) {
+	name := "sh"
+	shellFlag := "-c"
+	if runtime.GOOS == "windows" {
+		name = "cmd"
+		shellFlag = "/c"
+	}
+	arg = append([]string{shellFlag}, arg...)
+	return RunCommand(name, arg...)
+}
+
+// Run	Seconds
+// 0	0.000
+// 1	1.000
+// 2	2.000
+// 3	3.000
+// 4	4.000
+var defaultPatchBackoff = wait.Backoff{
+	Steps:    5,
+	Duration: 1 * time.Second,
+	Factor:   1,
+}
 
 // AddPodAnnotation adds an annotation to pod
-func AddPodAnnotation(c kubernetes.Interface, podName, namespace, key, value string) error {
-	return addPodMetadata(c, "annotations", podName, namespace, key, value)
+func AddPodAnnotation(ctx context.Context, c kubernetes.Interface, podName, namespace, key, value string, options ...interface{}) error {
+	backoff := defaultPatchBackoff
+	for _, option := range options {
+		switch v := option.(type) {
+		case wait.Backoff:
+			backoff = v
+		default:
+			panic("unknown option type")
+		}
+	}
+	return addPodMetadata(ctx, c, "annotations", podName, namespace, key, value, backoff)
 }
 
 // AddPodLabel adds an label to pod
-func AddPodLabel(c kubernetes.Interface, podName, namespace, key, value string) error {
-	return addPodMetadata(c, "labels", podName, namespace, key, value)
+func AddPodLabel(ctx context.Context, c kubernetes.Interface, podName, namespace, key, value string) error {
+	return addPodMetadata(ctx, c, "labels", podName, namespace, key, value, defaultPatchBackoff)
 }
 
 // addPodMetadata is helper to either add a pod label or annotation to the pod
-func addPodMetadata(c kubernetes.Interface, field, podName, namespace, key, value string) error {
+func addPodMetadata(ctx context.Context, c kubernetes.Interface, field, podName, namespace, key, value string, backoff wait.Backoff) error {
 	metadata := map[string]interface{}{
 		"metadata": map[string]interface{}{
 			field: map[string]string{
@@ -441,32 +474,23 @@ func addPodMetadata(c kubernetes.Interface, field, podName, namespace, key, valu
 			},
 		},
 	}
-	var err error
 	patch, err := json.Marshal(metadata)
 	if err != nil {
 		return errors.InternalWrapError(err)
 	}
-	for attempt := 0; attempt < patchRetries; attempt++ {
-		_, err = c.CoreV1().Pods(namespace).Patch(podName, types.MergePatchType, patch)
-		if err != nil {
-			if !apierr.IsConflict(err) {
-				return err
-			}
-		} else {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return err
+	return waitutil.Backoff(backoff, func() (bool, error) {
+		_, err := c.CoreV1().Pods(namespace).Patch(ctx, podName, types.MergePatchType, patch, metav1.PatchOptions{})
+		return !errorsutil.IsTransientErr(err), err
+	})
 }
 
 const deleteRetries = 3
 
 // DeletePod deletes a pod. Ignores NotFound error
-func DeletePod(c kubernetes.Interface, podName, namespace string) error {
+func DeletePod(ctx context.Context, c kubernetes.Interface, podName, namespace string) error {
 	var err error
 	for attempt := 0; attempt < deleteRetries; attempt++ {
-		err = c.CoreV1().Pods(namespace).Delete(podName, &metav1.DeleteOptions{})
+		err = c.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 		if err == nil || apierr.IsNotFound(err) {
 			return nil
 		}

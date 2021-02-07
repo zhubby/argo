@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"context"
 	"encoding/base64"
 	"strings"
 	"time"
@@ -9,30 +10,29 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
-	// load the azure plugin (required to authenticate against AKS clusters).
-	_ "k8s.io/client-go/plugin/pkg/client/auth/azure"
-	// load the gcp plugin (required to authenticate against GKE clusters).
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	// load the oidc plugin (required to authenticate with OpenID Connect).
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	// load authentication plugin for obtaining credentials from cloud providers.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/argoproj/argo/pkg/apis/workflow"
-	"github.com/argoproj/argo/pkg/client/clientset/versioned"
-	"github.com/argoproj/argo/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
-	"github.com/argoproj/argo/util/kubeconfig"
-	"github.com/argoproj/argo/workflow/hydrator"
+	"github.com/argoproj/argo/v3/config"
+	"github.com/argoproj/argo/v3/pkg/apis/workflow"
+	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/util/kubeconfig"
+	"github.com/argoproj/argo/v3/workflow/hydrator"
 )
 
 const Namespace = "argo"
 const Label = "argo-e2e"
+const defaultTimeout = 30 * time.Second
 
 type E2ESuite struct {
 	suite.Suite
+	Config            *config.Config
 	Persistence       *Persistence
 	RestConfig        *rest.Config
 	wfClient          v1alpha1.WorkflowInterface
@@ -50,11 +50,17 @@ func (s *E2ESuite) SetupSuite() {
 	s.CheckError(err)
 	s.KubeClient, err = kubernetes.NewForConfig(s.RestConfig)
 	s.CheckError(err)
+	configController := config.NewController(Namespace, "workflow-controller-configmap", s.KubeClient, config.EmptyConfigFunc)
+
+	ctx := context.Background()
+	c, err := configController.Get(ctx)
+	s.CheckError(err)
+	s.Config = c.(*config.Config)
 	s.wfClient = versioned.NewForConfigOrDie(s.RestConfig).ArgoprojV1alpha1().Workflows(Namespace)
 	s.wfebClient = versioned.NewForConfigOrDie(s.RestConfig).ArgoprojV1alpha1().WorkflowEventBindings(Namespace)
 	s.wfTemplateClient = versioned.NewForConfigOrDie(s.RestConfig).ArgoprojV1alpha1().WorkflowTemplates(Namespace)
 	s.cronClient = versioned.NewForConfigOrDie(s.RestConfig).ArgoprojV1alpha1().CronWorkflows(Namespace)
-	s.Persistence = newPersistence(s.KubeClient)
+	s.Persistence = newPersistence(s.KubeClient, s.Config)
 	s.hydrator = hydrator.New(s.Persistence.offloadNodeStatusRepo)
 	s.cwfTemplateClient = versioned.NewForConfigOrDie(s.RestConfig).ArgoprojV1alpha1().ClusterWorkflowTemplates()
 }
@@ -68,9 +74,29 @@ func (s *E2ESuite) BeforeTest(string, string) {
 }
 
 var foreground = metav1.DeletePropagationForeground
-var foregroundDelete = &metav1.DeleteOptions{PropagationPolicy: &foreground}
+var background = metav1.DeletePropagationBackground
 
 func (s *E2ESuite) DeleteResources() {
+
+	hasTestLabel := metav1.ListOptions{LabelSelector: Label}
+	resources := []schema.GroupVersionResource{
+		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.CronWorkflowPlural},
+		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowPlural},
+		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowTemplatePlural},
+		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.ClusterWorkflowTemplatePlural},
+		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowEventBindingPlural},
+		{Group: workflow.Group, Version: workflow.Version, Resource: "sensors"},
+		{Group: workflow.Group, Version: workflow.Version, Resource: "eventsources"},
+		{Version: "v1", Resource: "resourcequotas"},
+		{Version: "v1", Resource: "configmaps"},
+	}
+
+	ctx := context.Background()
+	for _, r := range resources {
+		err := s.dynamicFor(r).DeleteCollection(ctx, metav1.DeleteOptions{PropagationPolicy: &background}, hasTestLabel)
+		s.CheckError(err)
+	}
+
 	// delete archived workflows from the archive
 	if s.Persistence.IsEnabled() {
 		archive := s.Persistence.workflowArchive
@@ -84,25 +110,9 @@ func (s *E2ESuite) DeleteResources() {
 		}
 	}
 
-	hasTestLabel := metav1.ListOptions{LabelSelector: Label}
-	resources := []schema.GroupVersionResource{
-		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.CronWorkflowPlural},
-		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowEventBindingPlural},
-		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowPlural},
-		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowTemplatePlural},
-		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.ClusterWorkflowTemplatePlural},
-		{Version: "v1", Resource: "resourcequotas"},
-		{Version: "v1", Resource: "configmaps"},
-	}
-
-	for _, r := range resources {
-		err := s.dynamicFor(r).DeleteCollection(foregroundDelete, hasTestLabel)
-		s.CheckError(err)
-	}
-
 	for _, r := range resources {
 		for {
-			list, err := s.dynamicFor(r).List(hasTestLabel)
+			list, err := s.dynamicFor(r).List(ctx, hasTestLabel)
 			s.CheckError(err)
 			if len(list.Items) == 0 {
 				break
@@ -112,7 +122,14 @@ func (s *E2ESuite) DeleteResources() {
 	}
 }
 
-func (s *E2ESuite) AfterTest(_, _ string) {}
+func (s *E2ESuite) Need(needs ...Need) {
+	for _, n := range needs {
+		met, message := n(s)
+		if !met {
+			s.T().Skip("unmet need: " + message)
+		}
+	}
+}
 
 func (s *E2ESuite) dynamicFor(r schema.GroupVersionResource) dynamic.ResourceInterface {
 	resourceInterface := dynamic.NewForConfigOrDie(s.RestConfig).Resource(r)
@@ -143,7 +160,9 @@ func (s *E2ESuite) GetServiceAccountToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	secretList, err := clientset.CoreV1().Secrets("argo").List(metav1.ListOptions{})
+
+	ctx := context.Background()
+	secretList, err := clientset.CoreV1().Secrets("argo").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}

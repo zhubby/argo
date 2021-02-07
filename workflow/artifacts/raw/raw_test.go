@@ -1,6 +1,7 @@
 package raw_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -8,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/workflow/artifacts/raw"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/workflow/artifacts/raw"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 
 func TestLoad(t *testing.T) {
 
-	content := "time: " + string(time.Now().UnixNano())
+	content := fmt.Sprintf("time: %v", time.Now().UnixNano())
 	lf, err := ioutil.TempFile("", LoadFileName)
 	assert.NoError(t, err)
 	defer os.Remove(lf.Name())

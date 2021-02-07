@@ -13,6 +13,7 @@ import (
 )
 
 func main() {
+	time.Sleep(time.Second) // allow PNS 1s to secure my root file-handle
 	err := argosay(os.Args[1:]...)
 	if err != nil {
 		if exitErr, ok := err.(exitError); ok {
@@ -81,9 +82,13 @@ func echo(args []string) error {
 		return nil
 	case 2:
 		file := args[1]
-		err := os.MkdirAll(filepath.Dir(file), 0777)
-		if err != nil {
-			return err
+		dir := filepath.Dir(file)
+		_, err := os.Stat(dir)
+		if os.IsNotExist(err) {
+			err := os.MkdirAll(dir, 0777)
+			if err != nil {
+				return err
+			}
 		}
 		err = ioutil.WriteFile(file, []byte(args[0]), 0666)
 		if err != nil {

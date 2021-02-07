@@ -14,9 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/argoproj/argo/cmd/argo/commands/client"
-	cronworkflowpkg "github.com/argoproj/argo/pkg/apiclient/cronworkflow"
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/cmd/argo/commands/client"
+	cronworkflowpkg "github.com/argoproj/argo/v3/pkg/apiclient/cronworkflow"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
 )
 
 type listFlags struct {
@@ -58,7 +58,7 @@ func NewListCommand() *cobra.Command {
 			}
 		},
 	}
-	command.Flags().BoolVar(&listArgs.allNamespaces, "all-namespaces", false, "Show workflows from all namespaces")
+	command.Flags().BoolVarP(&listArgs.allNamespaces, "all-namespaces", "A", false, "Show workflows from all namespaces")
 	command.Flags().StringVarP(&listArgs.output, "output", "o", "", "Output format. One of: wide|name")
 	return command
 }
@@ -70,23 +70,23 @@ func printTable(wfList []wfv1.CronWorkflow, listArgs *listFlags) {
 	}
 	_, _ = fmt.Fprint(w, "NAME\tAGE\tLAST RUN\tNEXT RUN\tSCHEDULE\tSUSPENDED")
 	_, _ = fmt.Fprint(w, "\n")
-	for _, wf := range wfList {
+	for _, cwf := range wfList {
 		if listArgs.allNamespaces {
-			_, _ = fmt.Fprintf(w, "%s\t", wf.ObjectMeta.Namespace)
+			_, _ = fmt.Fprintf(w, "%s\t", cwf.ObjectMeta.Namespace)
 		}
 		var cleanLastScheduledTime string
-		if wf.Status.LastScheduledTime != nil {
-			cleanLastScheduledTime = humanize.RelativeDurationShort(wf.Status.LastScheduledTime.Time, time.Now())
+		if cwf.Status.LastScheduledTime != nil {
+			cleanLastScheduledTime = humanize.RelativeDurationShort(cwf.Status.LastScheduledTime.Time, time.Now())
 		} else {
 			cleanLastScheduledTime = "N/A"
 		}
 		var cleanNextScheduledTime string
-		if next, err := wf.GetNextRuntime(); err == nil {
+		if next, err := GetNextRuntime(&cwf); err == nil {
 			cleanNextScheduledTime = humanize.RelativeDurationShort(next, time.Now())
 		} else {
 			cleanNextScheduledTime = "N/A"
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%t", wf.ObjectMeta.Name, humanize.RelativeDurationShort(wf.ObjectMeta.CreationTimestamp.Time, time.Now()), cleanLastScheduledTime, cleanNextScheduledTime, wf.Spec.Schedule, wf.Spec.Suspend)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%t", cwf.ObjectMeta.Name, humanize.RelativeDurationShort(cwf.ObjectMeta.CreationTimestamp.Time, time.Now()), cleanLastScheduledTime, cleanNextScheduledTime, cwf.Spec.Schedule, cwf.Spec.Suspend)
 		_, _ = fmt.Fprintf(w, "\n")
 	}
 	_ = w.Flush()

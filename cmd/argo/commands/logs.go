@@ -14,8 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
-	"github.com/argoproj/argo/cmd/argo/commands/client"
-	workflowpkg "github.com/argoproj/argo/pkg/apiclient/workflow"
+	"github.com/argoproj/argo/v3/cmd/argo/commands/client"
+	workflowpkg "github.com/argoproj/argo/v3/pkg/apiclient/workflow"
 )
 
 func NewLogsCommand() *cobra.Command {
@@ -108,7 +108,7 @@ func NewLogsCommand() *cobra.Command {
 
 func logWorkflow(ctx context.Context, serviceClient workflowpkg.WorkflowServiceClient, namespace, workflow, podName string, logOptions *corev1.PodLogOptions) {
 	// logs
-	stream, err := serviceClient.PodLogs(ctx, &workflowpkg.WorkflowLogRequest{
+	stream, err := serviceClient.WorkflowLogs(ctx, &workflowpkg.WorkflowLogRequest{
 		Name:       workflow,
 		Namespace:  namespace,
 		PodName:    podName,

@@ -45,10 +45,10 @@ func runServer(config ServerConfig, registry *prometheus.Registry, ctx context.C
 
 	mux := http.NewServeMux()
 	mux.Handle(config.Path, promhttp.HandlerFor(registry, handlerOpts))
-	srv := &http.Server{Addr: fmt.Sprintf(":%s", config.Port), Handler: mux}
+	srv := &http.Server{Addr: fmt.Sprintf(":%v", config.Port), Handler: mux}
 
 	go func() {
-		log.Infof("Starting prometheus metrics server at localhost:%s%s", config.Port, config.Path)
+		log.Infof("Starting prometheus metrics server at localhost:%v%s", config.Port, config.Path)
 		if err := srv.ListenAndServe(); err != nil {
 			panic(err)
 		}
@@ -61,7 +61,7 @@ func runServer(config ServerConfig, registry *prometheus.Registry, ctx context.C
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Infof("Unable to shutdown metrics server at localhost:%s%s", config.Port, config.Path)
+		log.Infof("Unable to shutdown metrics server at localhost:%v%s", config.Port, config.Path)
 	}
 }
 
@@ -70,6 +70,9 @@ func (m *Metrics) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.Desc()
 	}
 	m.logMetric.Describe(ch)
+	K8sRequestTotalMetric.Describe(ch)
+	PodMissingMetric.Describe(ch)
+	WorkflowConditionMetric.Describe(ch)
 }
 
 func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
@@ -77,6 +80,9 @@ func (m *Metrics) Collect(ch chan<- prometheus.Metric) {
 		ch <- metric
 	}
 	m.logMetric.Collect(ch)
+	K8sRequestTotalMetric.Collect(ch)
+	PodMissingMetric.Collect(ch)
+	WorkflowConditionMetric.Collect(ch)
 }
 
 func (m *Metrics) garbageCollector(ctx context.Context) {

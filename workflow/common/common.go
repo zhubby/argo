@@ -5,7 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/argoproj/argo/pkg/apis/workflow"
+	"github.com/argoproj/argo/v3/pkg/apis/workflow"
 )
 
 const (
@@ -35,6 +35,10 @@ const (
 	// AnnotationKeyNodeName is the node's type
 	AnnotationKeyNodeType = workflow.WorkflowFullName + "/node-type"
 
+	// AnnotationKeyRBACRule is a rule to match the claims
+	AnnotationKeyRBACRule           = workflow.WorkflowFullName + "/rbac-rule"
+	AnnotationKeyRBACRulePrecedence = workflow.WorkflowFullName + "/rbac-rule-precedence"
+
 	// AnnotationKeyNodeMessage is the pod metadata annotation key the executor will use to
 	// communicate errors encountered by the executor during artifact load/save, etc...
 	AnnotationKeyNodeMessage = workflow.WorkflowFullName + "/node-message"
@@ -51,10 +55,18 @@ const (
 	// for the purposes of workflow segregation
 	LabelKeyControllerInstanceID = workflow.WorkflowFullName + "/controller-instanceid"
 	// Who created this workflow.
-	LabelKeyCreator = workflow.WorkflowFullName + "/creator"
+	LabelKeyCreator      = workflow.WorkflowFullName + "/creator"
+	LabelKeyCreatorEmail = workflow.WorkflowFullName + "/creator-email"
 	// LabelKeyCompleted is the metadata label applied on worfklows and workflow pods to indicates if resource is completed
-	// Workflows and pods with a completed=true label will be ignored by the controller
+	// Workflows and pods with a completed=true label will be ignored by the controller.
+	// See also `LabelKeyWorkflowArchivingStatus`.
 	LabelKeyCompleted = workflow.WorkflowFullName + "/completed"
+	// LabelKeyWorkflowArchivingStatus indicates if a workflow needs archiving or not:
+	// * `` - does not need archiving ... yet
+	// * `Pending` - pending archiving
+	// * `Archived` - has been archived
+	// See also `LabelKeyCompleted`.
+	LabelKeyWorkflowArchivingStatus = workflow.WorkflowFullName + "/workflow-archiving-status"
 	// LabelKeyWorkflow is the pod metadata label to indicate the associated workflow name
 	LabelKeyWorkflow = workflow.WorkflowFullName + "/workflow"
 	// LabelKeyPhase is a label applied to workflows to indicate the current phase of the workflow (for filtering purposes)
@@ -148,6 +160,8 @@ const (
 	LocalVarStatus = "status"
 	// LocalVarResourcesDuration is a step level variable (currently only available in metric emission) that tracks the resources duration of the step
 	LocalVarResourcesDuration = "resourcesDuration"
+	// LocalVarExitCode is a step level variable (currently only available in metric emission) that tracks the step's exit code
+	LocalVarExitCode = "exitCode"
 
 	KubeConfigDefaultMountPath    = "/kube/config"
 	KubeConfigDefaultVolumeName   = "kubeconfig"

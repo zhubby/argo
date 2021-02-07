@@ -15,7 +15,7 @@ data:
     instanceID: my-ci-controller
 
     # Parallelism limits the max total parallel workflows that can execute at the same time
-    # (available since Argo v2.3)
+    # (available since Argo v2.3). Controller must be restarted to take effect.
     parallelism: 10
 
     # Whether or not to emit events on node completion. These can take a up a lot of space in
@@ -26,7 +26,7 @@ data:
     nodeEvents:
       enabled: true
 
-    # uncomment flowing lines if workflow controller runs in a different k8s cluster with the 
+    # uncomment flowing lines if workflow controller runs in a different k8s cluster with the
     # workflow workloads, or needs to communicate with the k8s apiserver using an out-of-cluster
     # kubeconfig secret
     # kubeConfig:
@@ -40,12 +40,27 @@ data:
     #   volumeName: kube-config-volume
 
     links:
+      # Adds a button to the workflow page. E.g. linking to you logging facility.
       - name: Example Workflow Link
         scope: workflow
-        url: http://logging-facility?namespace=${metadata.namespace}&workflowName=${metadata.name}
+        url: http://logging-facility?namespace=${metadata.namespace}&workflowName=${metadata.name}&startedAt=${status.startedAt}&finishedAt=${status.finishedAt}
+      # Adds a button next to the pod.  E.g. linking to you logging facility but for the pod only.
       - name: Example Pod Link
         scope: pod
-        url: http://logging-facility?namespace=${metadata.namespace}&podName=${metadata.name}
+        url: http://logging-facility?namespace=${metadata.namespace}&podName=${metadata.name}&startedAt=${status.startedAt}&finishedAt=${status.finishedAt}
+      - name: Pod Logs
+        scope: pod-logs
+        url: http://logging-facility?namespace=${metadata.namespace}&podName=${metadata.name}&startedAt=${status.startedAt}&finishedAt=${status.finishedAt}
+      - name: Event Source Logs
+        scope: event-source-logs
+        url: http://logging-facility?namespace=${metadata.namespace}&podName=${metadata.name}&startedAt=${status.startedAt}&finishedAt=${status.finishedAt}
+      - name: Sensor Logs
+        scope: sensor-logs
+        url: http://logging-facility?namespace=${metadata.namespace}&podName=${metadata.name}&startedAt=${status.startedAt}&finishedAt=${status.finishedAt}
+      # Adds a button to the bottom right of every page to link to your organisation help or chat.
+      - name: Get help
+        scope: chat
+        url: http://my-chat
 
     # artifactRepository defines the default location to be used as the artifact repository for
     # container artifacts.
@@ -164,6 +179,8 @@ data:
       archive: false
       # the number of days to keep archived workflows (the default is forever)
       archiveTTL: 180d
+      # skip database migration if needed.
+      # skipMigration: true
 
       # LabelSelector determines the workflow that matches with the matchlabels or matchrequirements, will be archived.
       # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
@@ -185,6 +202,10 @@ data:
         passwordSecret:
           name: argo-postgres-config
           key: password
+        ssl: true
+        # sslMode must be one of: disable, require, verify-ca, verify-full
+        # you can find more information about those ssl options here: https://godoc.org/github.com/lib/pq
+        sslMode: require
 
       # Optional config for mysql:
       # mysql:
@@ -200,7 +221,7 @@ data:
       #     key: password
 
     # Default values that will apply to all Workflows from this controller, unless overridden on the Workflow-level
-    # See more: docs/default-workflow-specs.yaml
+    # See more: docs/default-workflow-specs.md
     workflowDefaults:
       metadata:
         annotations:
@@ -232,11 +253,17 @@ data:
       # be in the form <argo-server-root-url>/oauth2/callback. It must be
       # browser-accessible.
       redirectUrl: https://argo-server/oauth2/callback
-
+      # Additional scopes to request. Typically needed for SSO RBAC. >= v2.12
+      scopes:
+       - groups
+       - email
+      # RBAC Config. >= v2.12
+      rbac:
+        enabled: false
     # workflowRequirements restricts the Workflows that the controller will process.
     # Current options:
     #   referenceOnly: Only Workflows using "workflowTemplateRef" will be processed. This allows the administrator of the controller
-    #     to set a "library" of templates that may be run by its opeartor, limiting arbitrary Workflow execution.
+    #     to set a "library" of templates that may be run by its operator, limiting arbitrary Workflow execution.
     #   strictReferenceOnly: Only Workflows using "workflowTemplateRef" will be processed and the controller will enforce
     #     that the WorkflowTemplate that is referenced hasn't changed between operations. If you want to make sure the operator of the
     #     Workflow cannot run an arbitrary Workflow, use this option.

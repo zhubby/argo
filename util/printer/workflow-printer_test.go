@@ -10,8 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	intstrutil "github.com/argoproj/argo/util/intstr"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
 )
 
 func TestPrintWorkflows(t *testing.T) {
@@ -21,7 +20,7 @@ func TestPrintWorkflows(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "my-wf", Namespace: "my-ns", CreationTimestamp: metav1.Time{Time: now}},
 			Spec: wfv1.WorkflowSpec{
 				Arguments: wfv1.Arguments{Parameters: []wfv1.Parameter{
-					{Name: "my-param", Value: intstrutil.ParsePtr("my-value")},
+					{Name: "my-param", Value: wfv1.AnyStringPtr("my-value")},
 				}},
 				Priority: pointer.Int32Ptr(2),
 				Templates: []wfv1.Template{
@@ -29,7 +28,7 @@ func TestPrintWorkflows(t *testing.T) {
 				},
 			},
 			Status: wfv1.WorkflowStatus{
-				Phase:      wfv1.NodeRunning,
+				Phase:      wfv1.WorkflowRunning,
 				StartedAt:  metav1.Time{Time: now},
 				FinishedAt: metav1.Time{Time: now.Add(3 * time.Second)},
 				Nodes: wfv1.Nodes{
@@ -43,6 +42,14 @@ func TestPrintWorkflows(t *testing.T) {
 			},
 		},
 	}
+
+	var emptyWorkflows wfv1.Workflows
+	t.Run("Empty", func(t *testing.T) {
+		var b bytes.Buffer
+		assert.NoError(t, PrintWorkflows(emptyWorkflows, &b, PrintOpts{}))
+		assert.Equal(t, `No workflows found
+`, b.String())
+	})
 	t.Run("Default", func(t *testing.T) {
 		var b bytes.Buffer
 		assert.NoError(t, PrintWorkflows(workflows, &b, PrintOpts{}))

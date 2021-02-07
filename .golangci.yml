@@ -7,10 +7,14 @@ run:
   skip-files:
     - server/static/files.go
   build-tags:
-    - e2e
+    - api
+    - cli
+    - cron
+    - executor
+    - functional
 linters:
   enable:
     - goimports
 linters-settings:
   goimports:
-    local-prefixes: github.com/argoproj/argo
+    local-prefixes: github.com/argoproj/argo/

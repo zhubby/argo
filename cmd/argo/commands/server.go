@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	eventsource "github.com/argoproj/argo-events/pkg/client/eventsource/clientset/versioned"
+	sensor "github.com/argoproj/argo-events/pkg/client/sensor/clientset/versioned"
 	"github.com/argoproj/pkg/errors"
 	"github.com/argoproj/pkg/stats"
 	log "github.com/sirupsen/logrus"
@@ -16,26 +18,29 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/argoproj/argo/cmd/argo/commands/client"
-	wfclientset "github.com/argoproj/argo/pkg/client/clientset/versioned"
-	"github.com/argoproj/argo/server/apiserver"
-	"github.com/argoproj/argo/server/auth"
-	"github.com/argoproj/argo/util/help"
+	"github.com/argoproj/argo/v3/cmd/argo/commands/client"
+	wfclientset "github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo/v3/server/apiserver"
+	"github.com/argoproj/argo/v3/server/auth"
+	"github.com/argoproj/argo/v3/server/types"
+	"github.com/argoproj/argo/v3/util/help"
 )
 
 func NewServerCommand() *cobra.Command {
 	var (
-		authModes               []string
-		configMap               string
-		port                    int
-		baseHRef                string
-		secure                  bool
-		htst                    bool
-		namespaced              bool   // --namespaced
-		managedNamespace        string // --managed-namespace
-		enableOpenBrowser       bool
-		eventOperationQueueSize int
-		eventWorkerCount        int
+		authModes                []string
+		configMap                string
+		port                     int
+		baseHRef                 string
+		secure                   bool
+		htst                     bool
+		namespaced               bool   // --namespaced
+		managedNamespace         string // --managed-namespace
+		enableOpenBrowser        bool
+		eventOperationQueueSize  int
+		eventWorkerCount         int
+		frameOptions             string
+		accessControlAllowOrigin string
 	)
 
 	var command = cobra.Command{
@@ -53,10 +58,12 @@ See %s`, help.ArgoSever),
 			config.QPS = 20.0
 
 			namespace := client.Namespace()
-
-			kubeConfig := kubernetes.NewForConfigOrDie(config)
-			wflientset := wfclientset.NewForConfigOrDie(config)
-
+			clients := &types.Clients{
+				Workflow:    wfclientset.NewForConfigOrDie(config),
+				EventSource: eventsource.NewForConfigOrDie(config),
+				Sensor:      sensor.NewForConfigOrDie(config),
+				Kubernetes:  kubernetes.NewForConfigOrDie(config),
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -96,18 +103,19 @@ See %s`, help.ArgoSever),
 			}
 
 			opts := apiserver.ArgoServerOpts{
-				BaseHRef:                baseHRef,
-				TLSConfig:               tlsConfig,
-				HSTS:                    htst,
-				Namespace:               namespace,
-				WfClientSet:             wflientset,
-				KubeClientset:           kubeConfig,
-				RestConfig:              config,
-				AuthModes:               modes,
-				ManagedNamespace:        managedNamespace,
-				ConfigName:              configMap,
-				EventOperationQueueSize: eventOperationQueueSize,
-				EventWorkerCount:        eventWorkerCount,
+				BaseHRef:                 baseHRef,
+				TLSConfig:                tlsConfig,
+				HSTS:                     htst,
+				Namespace:                namespace,
+				Clients:                  clients,
+				RestConfig:               config,
+				AuthModes:                modes,
+				ManagedNamespace:         managedNamespace,
+				ConfigName:               configMap,
+				EventOperationQueueSize:  eventOperationQueueSize,
+				EventWorkerCount:         eventWorkerCount,
+				XFrameOptions:            frameOptions,
+				AccessControlAllowOrigin: accessControlAllowOrigin,
 			}
 			browserOpenFunc := func(url string) {}
 			if enableOpenBrowser {
@@ -119,7 +127,7 @@ See %s`, help.ArgoSever),
 					}
 				}
 			}
-			server, err := apiserver.NewArgoServer(opts)
+			server, err := apiserver.NewArgoServer(ctx, opts)
 			errors.CheckError(err)
 			server.Run(ctx, port, browserOpenFunc)
 		},
@@ -141,5 +149,7 @@ See %s`, help.ArgoSever),
 	command.Flags().BoolVarP(&enableOpenBrowser, "browser", "b", false, "enable automatic launching of the browser [local mode]")
 	command.Flags().IntVar(&eventOperationQueueSize, "event-operation-queue-size", 16, "how many events operations that can be queued at once")
 	command.Flags().IntVar(&eventWorkerCount, "event-worker-count", 4, "how many event workers to run")
+	command.Flags().StringVar(&frameOptions, "x-frame-options", "DENY", "Set X-Frame-Options header in HTTP responses.")
+	command.Flags().StringVar(&accessControlAllowOrigin, "access-control-allow-origin", "", "Set Access-Control-Allow-Origin header in HTTP responses.")
 	return &command
 }

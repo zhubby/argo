@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/yaml"
 
-	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
 )
 
 var invalidCwf = `
@@ -68,9 +68,9 @@ func TestNextRuntime(t *testing.T) {
 	var cronWf v1alpha1.CronWorkflow
 	err := yaml.Unmarshal([]byte(invalidCwf), &cronWf)
 	if assert.NoError(t, err) {
-		next, err := cronWf.GetNextRuntime()
+		next, err := GetNextRuntime(&cronWf)
 		if assert.NoError(t, err) {
-			assert.Less(t, next.Unix(), time.Now().Add(1*time.Minute).Unix())
+			assert.LessOrEqual(t, next.Unix(), time.Now().Add(1*time.Minute).Unix())
 			assert.Greater(t, next.Unix(), time.Now().Unix())
 		}
 	}

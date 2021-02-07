@@ -64,7 +64,9 @@ func (i *Item) String() string {
 	}
 	// this convenience to remove quotes from strings will cause many problems
 	if jsonBytes[0] == '"' {
-		return string(jsonBytes[1 : len(jsonBytes)-1])
+		var str string
+		_ = json.Unmarshal(jsonBytes, &str)
+		return str
 	}
 	return string(jsonBytes)
 }
@@ -88,9 +90,9 @@ func (i *Item) DeepCopyInto(out *Item) {
 	}
 }
 
+// See: https://github.com/kubernetes/kube-openapi/tree/master/pkg/generators
 func (i Item) OpenAPISchemaType() []string {
-	// this list should also contain `array`, but that requires `items` and that did not appear to be easy
-	return []string{"boolean", "number", "string", "object"}
+	return nil
 }
 
 func (i Item) OpenAPISchemaFormat() string { return "" }

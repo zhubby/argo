@@ -8,13 +8,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
 )
 
 func Test_objectToWorkflowTemplate(t *testing.T) {
 	t.Run("NotUnstructured", func(t *testing.T) {
 		v, err := objectToWorkflowTemplate(&corev1.Status{})
-		assert.EqualError(t, err, "malformed workflow template: expected \"*unstructured.Unstructured\", got \"\"")
+		assert.EqualError(t, err, "malformed workflow template: expected \"*unstructured.Unstructured\", got \"*v1.Status\"")
 		assert.NotNil(t, v)
 	})
 	t.Run("MalformedWorkflowTemplate", func(t *testing.T) {

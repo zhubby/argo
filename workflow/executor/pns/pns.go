@@ -2,6 +2,7 @@ package pns
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,13 +17,17 @@ import (
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/argoproj/argo/errors"
-	"github.com/argoproj/argo/util/archive"
-	"github.com/argoproj/argo/workflow/common"
-	execcommon "github.com/argoproj/argo/workflow/executor/common"
-	os_specific "github.com/argoproj/argo/workflow/executor/os-specific"
+	"github.com/argoproj/argo/v3/errors"
+	"github.com/argoproj/argo/v3/util/archive"
+	errorsutil "github.com/argoproj/argo/v3/util/errors"
+	waitutil "github.com/argoproj/argo/v3/util/wait"
+	"github.com/argoproj/argo/v3/workflow/common"
+	execcommon "github.com/argoproj/argo/v3/workflow/executor/common"
+	argowait "github.com/argoproj/argo/v3/workflow/executor/common/wait"
+	osspecific "github.com/argoproj/argo/v3/workflow/executor/os-specific"
 )
 
 type PNSExecutor struct {
@@ -40,8 +45,6 @@ type PNSExecutor struct {
 
 	// thisPID is the pid of this process
 	thisPID int
-	// mainPID holds the main container's pid
-	mainPID int
 	// mainFS holds a file descriptor to the main filesystem, allowing the executor to access the
 	// filesystem after the main process exited
 	mainFS *os.File
@@ -98,7 +101,7 @@ func (p *PNSExecutor) enterChroot() error {
 	if err := p.mainFS.Chdir(); err != nil {
 		return errors.InternalWrapErrorf(err, "failed to chdir to main filesystem: %v", err)
 	}
-	err := os_specific.CallChroot()
+	err := osspecific.CallChroot()
 	if err != nil {
 		return errors.InternalWrapErrorf(err, "failed to chroot to main filesystem: %v", err)
 	}
@@ -110,7 +113,7 @@ func (p *PNSExecutor) exitChroot() error {
 	if err := p.rootFS.Chdir(); err != nil {
 		return errors.InternalWrapError(err)
 	}
-	err := os_specific.CallChroot()
+	err := osspecific.CallChroot()
 	if err != nil {
 		return errors.InternalWrapError(err)
 	}
@@ -160,19 +163,19 @@ func (p *PNSExecutor) WaitInit() error {
 }
 
 // Wait for the container to complete
-func (p *PNSExecutor) Wait(containerID string) error {
+func (p *PNSExecutor) Wait(ctx context.Context, containerID string) error {
 	mainPID, err := p.getContainerPID(containerID)
 	if err != nil {
+		log.Warnf("Failed to get main PID: %v", err)
 		if !p.hasOutputs {
 			log.Warnf("Ignoring wait failure: %v. Process assumed to have completed", err)
 			return nil
 		}
-		return err
+		return argowait.UntilTerminated(ctx, p.clientset, p.namespace, p.podName, containerID)
 	}
 	log.Infof("Main pid identified as %d", mainPID)
-	p.mainPID = mainPID
 	for pid, f := range p.pidFileHandles {
-		if pid == p.mainPID {
+		if pid == mainPID {
 			log.Info("Successfully secured file handle on main container root filesystem")
 			p.mainFS = &f.file
 		} else {
@@ -216,7 +219,7 @@ func (p *PNSExecutor) pollRootProcesses(timeout time.Duration) {
 	}
 }
 
-func (p *PNSExecutor) GetOutputStream(containerID string, combinedOutput bool) (io.ReadCloser, error) {
+func (p *PNSExecutor) GetOutputStream(ctx context.Context, containerID string, combinedOutput bool) (io.ReadCloser, error) {
 	if !combinedOutput {
 		log.Warn("non combined output unsupported")
 	}
@@ -224,12 +227,12 @@ func (p *PNSExecutor) GetOutputStream(containerID string, combinedOutput bool) (
 		Container: common.MainContainerName,
 		Follow:    true,
 	}
-	return p.clientset.CoreV1().Pods(p.namespace).GetLogs(p.podName, &opts).Stream()
+	return p.clientset.CoreV1().Pods(p.namespace).GetLogs(p.podName, &opts).Stream(ctx)
 }
 
-func (p *PNSExecutor) GetExitCode(containerID string) (string, error) {
+func (p *PNSExecutor) GetExitCode(ctx context.Context, containerID string) (string, error) {
 	log.Infof("Getting exit code of %s", containerID)
-	_, containerStatus, err := p.GetContainerStatus(containerID)
+	_, containerStatus, err := p.GetTerminatedContainerStatus(ctx, containerID)
 	if err != nil {
 		return "", fmt.Errorf("could not get container status: %s", err)
 	}
@@ -240,7 +243,7 @@ func (p *PNSExecutor) GetExitCode(containerID string) (string, error) {
 }
 
 // Kill a list of containerIDs first with a SIGTERM then with a SIGKILL after a grace period
-func (p *PNSExecutor) Kill(containerIDs []string) error {
+func (p *PNSExecutor) Kill(ctx context.Context, containerIDs []string) error {
 	var asyncErr error
 	wg := sync.WaitGroup{}
 	for _, cid := range containerIDs {
@@ -369,18 +372,33 @@ func (p *PNSExecutor) updateCtrIDMap() {
 	}
 }
 
-func (p *PNSExecutor) GetContainerStatus(containerID string) (*corev1.Pod, *corev1.ContainerStatus, error) {
-	pod, err := p.clientset.CoreV1().Pods(p.namespace).Get(p.podName, metav1.GetOptions{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not get pod: %s", err)
-	}
-	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if execcommon.GetContainerID(&containerStatus) != containerID {
-			continue
+var backoffOver30s = wait.Backoff{
+	Duration: 1 * time.Second,
+	Steps:    7,
+	Factor:   2,
+}
+
+func (p *PNSExecutor) GetTerminatedContainerStatus(ctx context.Context, containerID string) (*corev1.Pod, *corev1.ContainerStatus, error) {
+	var pod *corev1.Pod
+	var containerStatus *corev1.ContainerStatus
+	// Under high load, the Kubernetes API may be unresponsive for some time (30s). This would have failed the workflow
+	// previously (<=v2.11) but a 30s back-off mitigates this.
+	err := waitutil.Backoff(backoffOver30s, func() (bool, error) {
+		podRes, err := p.clientset.CoreV1().Pods(p.namespace).Get(ctx, p.podName, metav1.GetOptions{})
+		if err != nil {
+			return !errorsutil.IsTransientErr(err), err
 		}
-		return pod, &containerStatus, nil
-	}
-	return nil, nil, errors.New(errors.CodeNotFound, fmt.Sprintf("containerID %q is not found in the pod %s", containerID, p.podName))
+		for _, containerStatusRes := range podRes.Status.ContainerStatuses {
+			if execcommon.GetContainerID(&containerStatusRes) != containerID {
+				continue
+			}
+			pod = podRes
+			containerStatus = &containerStatusRes
+			return containerStatus.State.Terminated != nil, nil
+		}
+		return false, nil
+	})
+	return pod, containerStatus, err
 }
 
 // parseContainerID parses the containerID of a pid
@@ -393,21 +411,42 @@ func parseContainerID(pid int) (string, error) {
 	defer func() { _ = cgroupFile.Close() }()
 	sc := bufio.NewScanner(cgroupFile)
 	for sc.Scan() {
-		// See https://www.systutorials.com/docs/linux/man/5-proc/ for /proc/XX/cgroup format. e.g.:
-		// 5:cpuacct,cpu,cpuset:/daemons
 		line := sc.Text()
 		log.Debugf("pid %d: %s", pid, line)
-		parts := strings.Split(line, "/")
-		if len(parts) > 1 {
-			if containerID := parts[len(parts)-1]; containerID != "" {
-				// need to check for empty string because the line may look like: 5:rdma:/
-
-				// for crio we need to get rid of "crio-" prefix and ".scope" suffix
-				// e.g. crio-7a92a067289f6197148912be1c15f20f0330c7f3c541473d3b9c4043ca137b42.scope
-				containerID := strings.TrimSuffix(strings.TrimPrefix(containerID, "crio-"), ".scope")
-				return containerID, nil
-			}
+		containerID := parseContainerIDFromCgroupLine(line)
+		if containerID != "" {
+			return containerID, nil
 		}
 	}
 	return "", errors.InternalErrorf("Failed to parse container ID from %s", cgroupPath)
+}
+
+func parseContainerIDFromCgroupLine(line string) string {
+	// See https://www.systutorials.com/docs/linux/man/5-proc/ for /proc/XX/cgroup format. e.g.:
+	// 5:cpuacct,cpu,cpuset:/daemons
+	parts := strings.Split(line, "/")
+	if len(parts) > 1 {
+		if containerID := parts[len(parts)-1]; containerID != "" {
+			// need to check for empty string because the line may look like: 5:rdma:/
+
+			// remove possible ".scope" suffix
+			containerID := strings.TrimSuffix(containerID, ".scope")
+
+			// for compatibility with cri-containerd record format when using systemd cgroup path
+			// example record in /proc/{pid}/cgroup:
+			// 9:cpuset:/kubepods-besteffort-pod30556cce_0f92_11eb_b36d_02623cf324c8.slice:cri-containerd:c688c856b21cfb29c1dbf6c14793435e44a1299dfc12add33283239bffed2620
+			if strings.Contains(containerID, "cri-containerd") {
+				strList := strings.Split(containerID, ":")
+				containerID = strList[len(strList)-1]
+			}
+
+			// remove possible "*-" prefix
+			// e.g. crio-7a92a067289f6197148912be1c15f20f0330c7f3c541473d3b9c4043ca137b42.scope
+			parts := strings.Split(containerID, "-")
+			containerID = parts[len(parts)-1]
+
+			return containerID
+		}
+	}
+	return ""
 }

@@ -7,10 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/server/auth"
-	"github.com/argoproj/argo/server/auth/jws"
-	"github.com/argoproj/argo/workflow/common"
+	"gopkg.in/square/go-jose.v2/jwt"
+
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/server/auth"
+	"github.com/argoproj/argo/v3/server/auth/types"
+	"github.com/argoproj/argo/v3/workflow/common"
 )
 
 func TestLabel(t *testing.T) {
@@ -21,16 +23,24 @@ func TestLabel(t *testing.T) {
 	})
 	t.Run("NotEmpty", func(t *testing.T) {
 		wf := &wfv1.Workflow{}
-		Label(context.WithValue(context.TODO(), auth.ClaimSetKey, &jws.ClaimSet{Sub: "my-sub"}), wf)
+		Label(context.WithValue(context.TODO(), auth.ClaimsKey, &types.Claims{Claims: jwt.Claims{Subject: strings.Repeat("x", 63) + "y"}, Email: "my@email"}), wf)
 		if assert.NotEmpty(t, wf.Labels) {
-			assert.Contains(t, wf.Labels, common.LabelKeyCreator)
+			assert.Equal(t, strings.Repeat("x", 62)+"y", wf.Labels[common.LabelKeyCreator], "creator is truncated")
+			assert.Equal(t, "my.at.email", wf.Labels[common.LabelKeyCreatorEmail], "'@' is replaced by '.at.'")
 		}
 	})
-	t.Run("TooLong", func(t *testing.T) {
+	t.Run("TooLongHyphen", func(t *testing.T) {
 		wf := &wfv1.Workflow{}
-		Label(context.WithValue(context.TODO(), auth.ClaimSetKey, &jws.ClaimSet{Sub: strings.Repeat("x", 63) + "y"}), wf)
+		Label(context.WithValue(context.TODO(), auth.ClaimsKey, &types.Claims{Claims: jwt.Claims{Subject: strings.Repeat("-", 63) + "y"}}), wf)
 		if assert.NotEmpty(t, wf.Labels) {
-			assert.Equal(t, strings.Repeat("x", 62)+"y", wf.Labels[common.LabelKeyCreator])
+			assert.Equal(t, "y", wf.Labels[common.LabelKeyCreator])
+		}
+	})
+	t.Run("InvalidDNSNames", func(t *testing.T) {
+		wf := &wfv1.Workflow{}
+		Label(context.WithValue(context.TODO(), auth.ClaimsKey, &types.Claims{Claims: jwt.Claims{Subject: "!@#$%^&*()--__" + strings.Repeat("y", 35) + "__--!@#$%^&*()"}}), wf)
+		if assert.NotEmpty(t, wf.Labels) {
+			assert.Equal(t, strings.Repeat("y", 35), wf.Labels[common.LabelKeyCreator])
 		}
 	})
 }

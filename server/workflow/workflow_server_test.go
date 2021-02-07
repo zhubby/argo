@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gopkg.in/square/go-jose.v2/jwt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,18 +16,18 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 
-	"github.com/argoproj/argo/persist/sqldb"
-	"github.com/argoproj/argo/persist/sqldb/mocks"
-	workflowpkg "github.com/argoproj/argo/pkg/apiclient/workflow"
-	"github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/pkg/client/clientset/versioned"
-	v1alpha "github.com/argoproj/argo/pkg/client/clientset/versioned/fake"
-	"github.com/argoproj/argo/server/auth"
-	"github.com/argoproj/argo/server/auth/jws"
-	testutil "github.com/argoproj/argo/test/util"
-	"github.com/argoproj/argo/util"
-	"github.com/argoproj/argo/util/instanceid"
-	"github.com/argoproj/argo/workflow/common"
+	"github.com/argoproj/argo/v3/persist/sqldb"
+	"github.com/argoproj/argo/v3/persist/sqldb/mocks"
+	workflowpkg "github.com/argoproj/argo/v3/pkg/apiclient/workflow"
+	"github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
+	v1alpha "github.com/argoproj/argo/v3/pkg/client/clientset/versioned/fake"
+	"github.com/argoproj/argo/v3/server/auth"
+	"github.com/argoproj/argo/v3/server/auth/types"
+	testutil "github.com/argoproj/argo/v3/test/util"
+	"github.com/argoproj/argo/v3/util"
+	"github.com/argoproj/argo/v3/util/instanceid"
+	"github.com/argoproj/argo/v3/workflow/common"
 )
 
 const unlabelled = `{
@@ -585,7 +586,7 @@ func getWorkflowServer() (workflowpkg.WorkflowServiceServer, context.Context) {
 	kubeClientSet := fake.NewSimpleClientset()
 	wfClientset := v1alpha.NewSimpleClientset(&unlabelledObj, &wfObj1, &wfObj2, &wfObj3, &wfObj4, &wfObj5, &failedWfObj, &wftmpl, &cronwfObj, &cwfTmpl)
 	wfClientset.PrependReactor("create", "workflows", generateNameReactor)
-	ctx := context.WithValue(context.WithValue(context.WithValue(context.TODO(), auth.WfKey, wfClientset), auth.KubeKey, kubeClientSet), auth.ClaimSetKey, &jws.ClaimSet{Sub: "my-sub"})
+	ctx := context.WithValue(context.WithValue(context.WithValue(context.TODO(), auth.WfKey, wfClientset), auth.KubeKey, kubeClientSet), auth.ClaimsKey, &types.Claims{Claims: jwt.Claims{Subject: "my-sub"}})
 	return server, ctx
 }
 
@@ -630,7 +631,7 @@ func (t testWatchWorkflowServer) Send(*workflowpkg.WorkflowWatchEvent) error {
 func TestWatchWorkflows(t *testing.T) {
 	server, ctx := getWorkflowServer()
 	wf := &v1alpha1.Workflow{
-		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.NodeSucceeded},
+		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowSucceeded},
 	}
 	assert.NoError(t, json.Unmarshal([]byte(wf1), &wf))
 	ctx, cancel := context.WithCancel(ctx)
@@ -644,7 +645,7 @@ func TestWatchWorkflows(t *testing.T) {
 func TestWatchLatestWorkflow(t *testing.T) {
 	server, ctx := getWorkflowServer()
 	wf := &v1alpha1.Workflow{
-		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.NodeSucceeded},
+		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowSucceeded},
 	}
 	assert.NoError(t, json.Unmarshal([]byte(wf1), &wf))
 	ctx, cancel := context.WithCancel(ctx)
@@ -677,7 +678,7 @@ func TestGetWorkflowWithNotFound(t *testing.T) {
 func TestGetLatestWorkflow(t *testing.T) {
 	_, ctx := getWorkflowServer()
 	wfClient := ctx.Value(auth.WfKey).(versioned.Interface)
-	wf, err := getLatestWorkflow(wfClient, "test")
+	wf, err := getLatestWorkflow(ctx, wfClient, "test")
 	if assert.NoError(t, err) {
 		assert.Equal(t, wf.Name, "hello-world-9tql2-test")
 	}
@@ -687,7 +688,7 @@ func TestGetWorkflow(t *testing.T) {
 	server, ctx := getWorkflowServer()
 	s := server.(*workflowServer)
 	wfClient := auth.GetWfClient(ctx)
-	wf, err := s.getWorkflow(wfClient, "test", "hello-world-9tql2-test", metav1.GetOptions{})
+	wf, err := s.getWorkflow(ctx, wfClient, "test", "hello-world-9tql2-test", metav1.GetOptions{})
 	if assert.NoError(t, err) {
 		assert.NotNil(t, wf)
 	}
@@ -697,7 +698,7 @@ func TestValidateWorkflow(t *testing.T) {
 	server, ctx := getWorkflowServer()
 	s := server.(*workflowServer)
 	wfClient := auth.GetWfClient(ctx)
-	wf, err := s.getWorkflow(wfClient, "test", "hello-world-9tql2-test", metav1.GetOptions{})
+	wf, err := s.getWorkflow(ctx, wfClient, "test", "hello-world-9tql2-test", metav1.GetOptions{})
 	if assert.NoError(t, err) {
 		assert.NoError(t, s.validateWorkflow(wf))
 	}
@@ -817,7 +818,7 @@ func TestStopWorkflow(t *testing.T) {
 	wf, err = server.StopWorkflow(ctx, &rsmWfReq)
 	if assert.NoError(t, err) {
 		assert.NotNil(t, wf)
-		assert.Equal(t, v1alpha1.NodeRunning, wf.Status.Phase)
+		assert.Equal(t, v1alpha1.WorkflowRunning, wf.Status.Phase)
 	}
 }
 

@@ -1,12 +1,13 @@
 package controller
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
+	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
 )
 
 var testTemplateScopeWorkflowYaml = `
@@ -75,13 +76,12 @@ func TestTemplateScope(t *testing.T) {
 
 	cancel, controller := newController(wf, wftmpl1, wftmpl2)
 	defer cancel()
-	wfcset := controller.wfclientset.ArgoprojV1alpha1().Workflows("default")
 
 	woc := newWorkflowOperationCtx(wf, controller)
-	woc.operate()
+	ctx := context.Background()
+	woc.operate(ctx)
 
-	wf, err := wfcset.Get(wf.Name, metav1.GetOptions{})
-	assert.NoError(t, err)
+	wf = woc.wf
 
 	node := findNodeByName(wf.Status.Nodes, "test-template-scope")
 	if assert.NotNil(t, node, "Node %s not found", "test-templte-scope") {
@@ -170,10 +170,11 @@ func TestTemplateScopeWithParam(t *testing.T) {
 	defer cancel()
 	wfcset := controller.wfclientset.ArgoprojV1alpha1().Workflows("default")
 
+	ctx := context.Background()
 	woc := newWorkflowOperationCtx(wf, controller)
-	woc.operate()
+	woc.operate(ctx)
 
-	wf, err := wfcset.Get(wf.Name, metav1.GetOptions{})
+	wf, err := wfcset.Get(ctx, wf.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 
 	node := findNodeByName(wf.Status.Nodes, "test-template-scope-with-param")
@@ -261,10 +262,11 @@ func TestTemplateScopeNestedStepsWithParams(t *testing.T) {
 	defer cancel()
 	wfcset := controller.wfclientset.ArgoprojV1alpha1().Workflows("default")
 
+	ctx := context.Background()
 	woc := newWorkflowOperationCtx(wf, controller)
-	woc.operate()
+	woc.operate(ctx)
 
-	wf, err := wfcset.Get(wf.Name, metav1.GetOptions{})
+	wf, err := wfcset.Get(ctx, wf.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 
 	node := findNodeByName(wf.Status.Nodes, "test-template-scope-nested-steps-with-params")
@@ -367,10 +369,11 @@ func TestTemplateScopeDAG(t *testing.T) {
 	defer cancel()
 	wfcset := controller.wfclientset.ArgoprojV1alpha1().Workflows("default")
 
+	ctx := context.Background()
 	woc := newWorkflowOperationCtx(wf, controller)
-	woc.operate()
+	woc.operate(ctx)
 
-	wf, err := wfcset.Get(wf.Name, metav1.GetOptions{})
+	wf, err := wfcset.Get(ctx, wf.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 
 	node := findNodeByName(wf.Status.Nodes, "test-template-scope-dag")
@@ -467,9 +470,10 @@ func TestTemplateClusterScope(t *testing.T) {
 	defer cancel()
 	wfcset := controller.wfclientset.ArgoprojV1alpha1().Workflows("default")
 
+	ctx := context.Background()
 	woc := newWorkflowOperationCtx(wf, controller)
-	woc.operate()
-	wf, err := wfcset.Get(wf.Name, metav1.GetOptions{})
+	woc.operate(ctx)
+	wf, err := wfcset.Get(ctx, wf.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
 
 	node := findNodeByName(wf.Status.Nodes, "test-template-scope")

@@ -16,6 +16,8 @@ Workflow is the definition of a workflow resource
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -75,6 +77,8 @@ Workflow is the definition of a workflow resource
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -136,6 +140,8 @@ Workflow is the definition of a workflow resource
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -147,6 +153,8 @@ Workflow is the definition of a workflow resource
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -223,6 +231,8 @@ Workflow is the definition of a workflow resource
 - [`sidecar.yaml`](https://github.com/argoproj/argo/blob/master/examples/sidecar.yaml)
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
+
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
 
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
@@ -306,7 +316,11 @@ WorkflowTemplate is the definition of a workflow template resource
 <summary>Examples (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`cron-backfill.yaml`](https://github.com/argoproj/argo/blob/master/examples/cron-backfill.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`templates.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/templates.yaml)
 </details>
@@ -335,6 +349,8 @@ WorkflowSpec is the specification of a Workflow.
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -342,6 +358,8 @@ WorkflowSpec is the specification of a Workflow.
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -398,6 +416,8 @@ WorkflowSpec is the specification of a Workflow.
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -459,6 +479,8 @@ WorkflowSpec is the specification of a Workflow.
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -470,6 +492,8 @@ WorkflowSpec is the specification of a Workflow.
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -547,6 +571,8 @@ WorkflowSpec is the specification of a Workflow.
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -577,6 +603,10 @@ WorkflowSpec is the specification of a Workflow.
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
 
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
+
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
 - [`dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/dag.yaml)
@@ -597,7 +627,7 @@ WorkflowSpec is the specification of a Workflow.
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`activeDeadlineSeconds`|`int64`|Optional duration in seconds relative to the workflow start time which the workflow is allowed to run before the controller terminates the io.argoproj.workflow.v1alpha1. A value of zero is used to terminate a Running workflow|
+|`activeDeadlineSeconds`|`integer`|Optional duration in seconds relative to the workflow start time which the workflow is allowed to run before the controller terminates the io.argoproj.workflow.v1alpha1. A value of zero is used to terminate a Running workflow|
 |`affinity`|[`Affinity`](#affinity)|Affinity sets the scheduling constraints for all pods in the io.argoproj.workflow.v1alpha1. Can be overridden by an affinity specified in the template|
 |`arguments`|[`Arguments`](#arguments)|Arguments contain the parameters and artifacts sent to the workflow entrypoint Parameters are referencable globally using the 'workflow' variable prefix. e.g. {{io.argoproj.workflow.v1alpha1.parameters.myparam}}|
 |`artifactRepositoryRef`|[`ArtifactRepositoryRef`](#artifactrepositoryref)|ArtifactRepositoryRef specifies the configMap name and key containing the artifact repository config.|
@@ -612,13 +642,14 @@ WorkflowSpec is the specification of a Workflow.
 |`metrics`|[`Metrics`](#metrics)|Metrics are a list of metrics emitted from this Workflow|
 |`nodeSelector`|`Map< string , string >`|NodeSelector is a selector which will result in all pods of the workflow to be scheduled on the selected node(s). This is able to be overridden by a nodeSelector specified in the template.|
 |`onExit`|`string`|OnExit is a template reference which is invoked at the end of the workflow, irrespective of the success, failure, or error of the primary io.argoproj.workflow.v1alpha1.|
-|`parallelism`|`int64`|Parallelism limits the max total parallel pods that can execute at the same time in a workflow|
+|`parallelism`|`integer`|Parallelism limits the max total parallel pods that can execute at the same time in a workflow|
 |`podDisruptionBudget`|[`PodDisruptionBudgetSpec`](#poddisruptionbudgetspec)|PodDisruptionBudget holds the number of concurrent disruptions that you allow for Workflow's Pods. Controller will automatically add the selector with workflow name, if selector is empty. Optional: Defaults to empty.|
 |`podGC`|[`PodGC`](#podgc)|PodGC describes the strategy to use when to deleting completed pods|
-|`podPriority`|`int32`|Priority to apply to workflow pods.|
+|`podPriority`|`integer`|Priority to apply to workflow pods.|
 |`podPriorityClassName`|`string`|PriorityClassName to apply to workflow pods.|
 |`podSpecPatch`|`string`|PodSpecPatch holds strategic merge patch to apply against the pod spec. Allows parameterization of container fields which are not strings (e.g. resource limits).|
-|`priority`|`int32`|Priority is used if controller is configured to process limited number of workflows in parallel. Workflows with higher priority are processed first.|
+|`priority`|`integer`|Priority is used if controller is configured to process limited number of workflows in parallel. Workflows with higher priority are processed first.|
+|`retryStrategy`|[`RetryStrategy`](#retrystrategy)|RetryStrategy for all templates in the io.argoproj.workflow.v1alpha1.|
 |`schedulerName`|`string`|Set scheduler name for all pods. Will be overridden if container/script template's scheduler name is set. Default scheduler will be used if neither specified.|
 |`securityContext`|[`PodSecurityContext`](#podsecuritycontext)|SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.|
 |`serviceAccountName`|`string`|ServiceAccountName is the name of the ServiceAccount to run all pods of the workflow as.|
@@ -627,8 +658,9 @@ WorkflowSpec is the specification of a Workflow.
 |`synchronization`|[`Synchronization`](#synchronization)|Synchronization holds synchronization lock configuration for this Workflow|
 |`templates`|`Array<`[`Template`](#template)`>`|Templates is a list of workflow templates used in a workflow|
 |`tolerations`|`Array<`[`Toleration`](#toleration)`>`|Tolerations to apply to workflow pods.|
-|~`ttlSecondsAfterFinished`~|~`int32`~|~TTLSecondsAfterFinished limits the lifetime of a Workflow that has finished execution (Succeeded, Failed, Error). If this field is set, once the Workflow finishes, it will be deleted after ttlSecondsAfterFinished expires. If this field is unset, ttlSecondsAfterFinished will not expire. If this field is set to zero, ttlSecondsAfterFinished expires immediately after the Workflow finishes.~ DEPRECATED: Use TTLStrategy.SecondsAfterCompletion instead.|
+|~`ttlSecondsAfterFinished`~|~`integer`~|~TTLSecondsAfterFinished limits the lifetime of a Workflow that has finished execution (Succeeded, Failed, Error). If this field is set, once the Workflow finishes, it will be deleted after ttlSecondsAfterFinished expires. If this field is unset, ttlSecondsAfterFinished will not expire. If this field is set to zero, ttlSecondsAfterFinished expires immediately after the Workflow finishes.~ DEPRECATED: Use TTLStrategy.SecondsAfterCompletion instead.|
 |`ttlStrategy`|[`TTLStrategy`](#ttlstrategy)|TTLStrategy limits the lifetime of a Workflow that has finished execution depending on if it Succeeded or Failed. If this struct is set, once the Workflow finishes, it will be deleted after the time to live expires. If this field is unset, the controller config map will hold the default values.|
+|`volumeClaimGC`|[`VolumeClaimGC`](#volumeclaimgc)|VolumeClaimGC describes the strategy to use when to deleting volumes from completed workflows|
 |`volumeClaimTemplates`|`Array<`[`PersistentVolumeClaim`](#persistentvolumeclaim)`>`|VolumeClaimTemplates is a list of claims that containers are allowed to reference. The Workflow controller will create the claims at the beginning of the workflow and delete the claims upon completion of the workflow|
 |`volumes`|`Array<`[`Volume`](#volume)`>`|Volumes is a list of volumes that can be mounted by containers in a io.argoproj.workflow.v1alpha1.|
 |`workflowTemplateRef`|[`WorkflowTemplateRef`](#workflowtemplateref)|WorkflowTemplateRef holds a reference to a WorkflowTemplate for execution|
@@ -640,8 +672,10 @@ WorkflowStatus contains overall status information about a workflow
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
+|`artifactRepositoryRef`|[`ArtifactRepositoryRefStatus`](#artifactrepositoryrefstatus)|ArtifactRepositoryRef is used to cache the repository to use so we do not need to determine it everytime we reconcile.|
 |`compressedNodes`|`string`|Compressed and base64 decoded Nodes map|
 |`conditions`|`Array<`[`Condition`](#condition)`>`|Conditions is a list of conditions the Workflow may have|
+|`estimatedDuration`|`integer`|EstimatedDuration in seconds.|
 |`finishedAt`|[`Time`](#time)|Time at which this workflow completed|
 |`message`|`string`|A human readable message indicating details about why the workflow is in this condition.|
 |`nodes`|[`NodeStatus`](#nodestatus)|Nodes is a mapping between a node ID and the node's status.|
@@ -649,6 +683,7 @@ WorkflowStatus contains overall status information about a workflow
 |`outputs`|[`Outputs`](#outputs)|Outputs captures output values and artifact locations produced by the workflow via global outputs|
 |`persistentVolumeClaims`|`Array<`[`Volume`](#volume)`>`|PersistentVolumeClaims tracks all PVCs that were created as part of the io.argoproj.workflow.v1alpha1. The contents of this list are drained at the end of the workflow.|
 |`phase`|`string`|Phase a simple, high-level summary of where the workflow is in its lifecycle.|
+|`progress`|`string`|Progress to completion|
 |`resourcesDuration`|`Map< integer , int64 >`|ResourcesDuration is the total for the workflow|
 |`startedAt`|[`Time`](#time)|Time at which this workflow started|
 |`storedTemplates`|[`Template`](#template)|StoredTemplates is a mapping between a template ref and the node's status.|
@@ -671,6 +706,8 @@ CronWorkflowSpec is the specification of a CronWorkflow
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -678,6 +715,8 @@ CronWorkflowSpec is the specification of a CronWorkflow
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -734,6 +773,8 @@ CronWorkflowSpec is the specification of a CronWorkflow
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -795,6 +836,8 @@ CronWorkflowSpec is the specification of a CronWorkflow
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -806,6 +849,8 @@ CronWorkflowSpec is the specification of a CronWorkflow
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -883,6 +928,8 @@ CronWorkflowSpec is the specification of a CronWorkflow
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -913,6 +960,10 @@ CronWorkflowSpec is the specification of a CronWorkflow
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
 
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
+
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
 - [`dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/dag.yaml)
@@ -934,10 +985,10 @@ CronWorkflowSpec is the specification of a CronWorkflow
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`concurrencyPolicy`|`string`|ConcurrencyPolicy is the K8s-style concurrency policy that will be used|
-|`failedJobsHistoryLimit`|`int32`|FailedJobsHistoryLimit is the number of successful jobs to be kept at a time|
+|`failedJobsHistoryLimit`|`integer`|FailedJobsHistoryLimit is the number of failed jobs to be kept at a time|
 |`schedule`|`string`|Schedule is a schedule to run the Workflow in Cron format|
-|`startingDeadlineSeconds`|`int64`|StartingDeadlineSeconds is the K8s-style deadline that will limit the time a CronWorkflow will be run after its original scheduled time if it is missed.|
-|`successfulJobsHistoryLimit`|`int32`|SuccessfulJobsHistoryLimit is the number of successful jobs to be kept at a time|
+|`startingDeadlineSeconds`|`integer`|StartingDeadlineSeconds is the K8s-style deadline that will limit the time a CronWorkflow will be run after its original scheduled time if it is missed.|
+|`successfulJobsHistoryLimit`|`integer`|SuccessfulJobsHistoryLimit is the number of successful jobs to be kept at a time|
 |`suspend`|`boolean`|Suspend is a flag that will stop new CronWorkflows from running if set to true|
 |`timezone`|`string`|Timezone is the timezone against which the cron schedule will be calculated, e.g. "Asia/Tokyo". Default is machine's local time.|
 |`workflowMetadata`|[`ObjectMeta`](#objectmeta)|WorkflowMetadata contains some metadata of the workflow to be run|
@@ -970,6 +1021,8 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -977,6 +1030,8 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -1033,6 +1088,8 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -1094,6 +1151,8 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -1105,6 +1164,8 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -1182,6 +1243,8 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -1212,6 +1275,10 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
 
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
+
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
 - [`dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/dag.yaml)
@@ -1232,7 +1299,7 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`activeDeadlineSeconds`|`int64`|Optional duration in seconds relative to the workflow start time which the workflow is allowed to run before the controller terminates the io.argoproj.workflow.v1alpha1. A value of zero is used to terminate a Running workflow|
+|`activeDeadlineSeconds`|`integer`|Optional duration in seconds relative to the workflow start time which the workflow is allowed to run before the controller terminates the io.argoproj.workflow.v1alpha1. A value of zero is used to terminate a Running workflow|
 |`affinity`|[`Affinity`](#affinity)|Affinity sets the scheduling constraints for all pods in the io.argoproj.workflow.v1alpha1. Can be overridden by an affinity specified in the template|
 |`arguments`|[`Arguments`](#arguments)|Arguments contain the parameters and artifacts sent to the workflow entrypoint Parameters are referencable globally using the 'workflow' variable prefix. e.g. {{io.argoproj.workflow.v1alpha1.parameters.myparam}}|
 |`artifactRepositoryRef`|[`ArtifactRepositoryRef`](#artifactrepositoryref)|ArtifactRepositoryRef specifies the configMap name and key containing the artifact repository config.|
@@ -1247,13 +1314,14 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 |`metrics`|[`Metrics`](#metrics)|Metrics are a list of metrics emitted from this Workflow|
 |`nodeSelector`|`Map< string , string >`|NodeSelector is a selector which will result in all pods of the workflow to be scheduled on the selected node(s). This is able to be overridden by a nodeSelector specified in the template.|
 |`onExit`|`string`|OnExit is a template reference which is invoked at the end of the workflow, irrespective of the success, failure, or error of the primary io.argoproj.workflow.v1alpha1.|
-|`parallelism`|`int64`|Parallelism limits the max total parallel pods that can execute at the same time in a workflow|
+|`parallelism`|`integer`|Parallelism limits the max total parallel pods that can execute at the same time in a workflow|
 |`podDisruptionBudget`|[`PodDisruptionBudgetSpec`](#poddisruptionbudgetspec)|PodDisruptionBudget holds the number of concurrent disruptions that you allow for Workflow's Pods. Controller will automatically add the selector with workflow name, if selector is empty. Optional: Defaults to empty.|
 |`podGC`|[`PodGC`](#podgc)|PodGC describes the strategy to use when to deleting completed pods|
-|`podPriority`|`int32`|Priority to apply to workflow pods.|
+|`podPriority`|`integer`|Priority to apply to workflow pods.|
 |`podPriorityClassName`|`string`|PriorityClassName to apply to workflow pods.|
 |`podSpecPatch`|`string`|PodSpecPatch holds strategic merge patch to apply against the pod spec. Allows parameterization of container fields which are not strings (e.g. resource limits).|
-|`priority`|`int32`|Priority is used if controller is configured to process limited number of workflows in parallel. Workflows with higher priority are processed first.|
+|`priority`|`integer`|Priority is used if controller is configured to process limited number of workflows in parallel. Workflows with higher priority are processed first.|
+|`retryStrategy`|[`RetryStrategy`](#retrystrategy)|RetryStrategy for all templates in the io.argoproj.workflow.v1alpha1.|
 |`schedulerName`|`string`|Set scheduler name for all pods. Will be overridden if container/script template's scheduler name is set. Default scheduler will be used if neither specified.|
 |`securityContext`|[`PodSecurityContext`](#podsecuritycontext)|SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.|
 |`serviceAccountName`|`string`|ServiceAccountName is the name of the ServiceAccount to run all pods of the workflow as.|
@@ -1262,8 +1330,9 @@ WorkflowTemplateSpec is a spec of WorkflowTemplate.
 |`synchronization`|[`Synchronization`](#synchronization)|Synchronization holds synchronization lock configuration for this Workflow|
 |`templates`|`Array<`[`Template`](#template)`>`|Templates is a list of workflow templates used in a workflow|
 |`tolerations`|`Array<`[`Toleration`](#toleration)`>`|Tolerations to apply to workflow pods.|
-|~`ttlSecondsAfterFinished`~|~`int32`~|~TTLSecondsAfterFinished limits the lifetime of a Workflow that has finished execution (Succeeded, Failed, Error). If this field is set, once the Workflow finishes, it will be deleted after ttlSecondsAfterFinished expires. If this field is unset, ttlSecondsAfterFinished will not expire. If this field is set to zero, ttlSecondsAfterFinished expires immediately after the Workflow finishes.~ DEPRECATED: Use TTLStrategy.SecondsAfterCompletion instead.|
+|~`ttlSecondsAfterFinished`~|~`integer`~|~TTLSecondsAfterFinished limits the lifetime of a Workflow that has finished execution (Succeeded, Failed, Error). If this field is set, once the Workflow finishes, it will be deleted after ttlSecondsAfterFinished expires. If this field is unset, ttlSecondsAfterFinished will not expire. If this field is set to zero, ttlSecondsAfterFinished expires immediately after the Workflow finishes.~ DEPRECATED: Use TTLStrategy.SecondsAfterCompletion instead.|
 |`ttlStrategy`|[`TTLStrategy`](#ttlstrategy)|TTLStrategy limits the lifetime of a Workflow that has finished execution depending on if it Succeeded or Failed. If this struct is set, once the Workflow finishes, it will be deleted after the time to live expires. If this field is unset, the controller config map will hold the default values.|
+|`volumeClaimGC`|[`VolumeClaimGC`](#volumeclaimgc)|VolumeClaimGC describes the strategy to use when to deleting volumes from completed workflows|
 |`volumeClaimTemplates`|`Array<`[`PersistentVolumeClaim`](#persistentvolumeclaim)`>`|VolumeClaimTemplates is a list of claims that containers are allowed to reference. The Workflow controller will create the claims at the beginning of the workflow and delete the claims upon completion of the workflow|
 |`volumes`|`Array<`[`Volume`](#volume)`>`|Volumes is a list of volumes that can be mounted by containers in a io.argoproj.workflow.v1alpha1.|
 |`workflowMetadata`|[`ObjectMeta`](#objectmeta)|WorkflowMetadata contains some metadata of the workflow to be refer|
@@ -1283,11 +1352,15 @@ Arguments to a template
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -1321,6 +1394,8 @@ Arguments to a template
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
 
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
+
 - [`exit-code-output-variable.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-code-output-variable.yaml)
 
 - [`exit-handler-dag-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handler-dag-level.yaml)
@@ -1352,6 +1427,8 @@ Arguments to a template
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -1393,6 +1470,8 @@ Arguments to a template
 
 - [`scripts-python.yaml`](https://github.com/argoproj/argo/blob/master/examples/scripts-python.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -1402,6 +1481,10 @@ Arguments to a template
 - [`synchronization-tmpl-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/synchronization-tmpl-level.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -1436,8 +1519,8 @@ _No description available_
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`configMap`|`string`|_No description available_|
-|`key`|`string`|_No description available_|
+|`configMap`|`string`|The name of the config map. Defaults to "artifact-repositories".|
+|`key`|`string`|The config map key. Defaults to the value of the "workflows.argoproj.io/default-artifact-repository" annotation.|
 
 ## ExecutorConfig
 
@@ -1480,6 +1563,41 @@ PodGC describes how to delete completed pods as they complete
 |:----------:|:----------:|---------------|
 |`strategy`|`string`|Strategy is the strategy to use. One of "OnPodCompletion", "OnPodSuccess", "OnWorkflowCompletion", "OnWorkflowSuccess"|
 
+## RetryStrategy
+
+RetryStrategy provides controls on how to retry a workflow step
+
+<details>
+<summary>Examples with this field (click to open)</summary>
+<br>
+
+- [`clustertemplates.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/clustertemplates.yaml)
+
+- [`dag-disable-failFast.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-disable-failFast.yaml)
+
+- [`retry-backoff.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-backoff.yaml)
+
+- [`retry-container-to-completion.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container-to-completion.yaml)
+
+- [`retry-container.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container.yaml)
+
+- [`retry-on-error.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-on-error.yaml)
+
+- [`retry-script.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-script.yaml)
+
+- [`retry-with-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-with-steps.yaml)
+
+- [`templates.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/templates.yaml)
+</details>
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`affinity`|[`RetryAffinity`](#retryaffinity)|Affinity prevents running workflow's step on the same host|
+|`backoff`|[`Backoff`](#backoff)|Backoff is a backoff strategy|
+|`limit`|[`IntOrString`](#intorstring)|Limit is the maximum number of attempts when retrying a container|
+|`retryPolicy`|`string`|RetryPolicy is a policy of NodePhase statuses that will be retried|
+
 ## Synchronization
 
 Synchronization holds synchronization lock configuration
@@ -1519,6 +1637,8 @@ Template is a reusable and composable unit of execution in a workflow
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -1526,6 +1646,8 @@ Template is a reusable and composable unit of execution in a workflow
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -1578,6 +1700,8 @@ Template is a reusable and composable unit of execution in a workflow
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -1639,6 +1763,8 @@ Template is a reusable and composable unit of execution in a workflow
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -1650,6 +1776,8 @@ Template is a reusable and composable unit of execution in a workflow
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -1727,6 +1855,8 @@ Template is a reusable and composable unit of execution in a workflow
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -1754,6 +1884,8 @@ Template is a reusable and composable unit of execution in a workflow
 - [`volumes-pvc.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-pvc.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -1789,12 +1921,11 @@ Template is a reusable and composable unit of execution in a workflow
 |`name`|`string`|Name is the name of the template|
 |`nodeSelector`|`Map< string , string >`|NodeSelector is a selector to schedule this step of the workflow to be run on the selected node(s). Overrides the selector set at the workflow level.|
 |`outputs`|[`Outputs`](#outputs)|Outputs describe the parameters and artifacts that this template produces|
-|`parallelism`|`int64`|Parallelism limits the max total parallel pods that can execute at the same time within the boundaries of this template invocation. If additional steps/dag templates are invoked, the pods created by those templates will not be counted towards this total.|
+|`parallelism`|`integer`|Parallelism limits the max total parallel pods that can execute at the same time within the boundaries of this template invocation. If additional steps/dag templates are invoked, the pods created by those templates will not be counted towards this total.|
 |`podSpecPatch`|`string`|PodSpecPatch holds strategic merge patch to apply against the pod spec. Allows parameterization of container fields which are not strings (e.g. resource limits).|
-|`priority`|`int32`|Priority to apply to workflow pods.|
+|`priority`|`integer`|Priority to apply to workflow pods.|
 |`priorityClassName`|`string`|PriorityClassName to apply to workflow pods.|
 |`resource`|[`ResourceTemplate`](#resourcetemplate)|Resource template subtype which can run k8s resources|
-|`resubmitPendingPods`|`boolean`|ResubmitPendingPods is a flag to enable resubmitting pods that remain Pending after initial submission|
 |`retryStrategy`|[`RetryStrategy`](#retrystrategy)|RetryStrategy describes how to retry a template when it fails|
 |`schedulerName`|`string`|If specified, the pod will be dispatched by specified scheduler. Or it will be dispatched by workflow scope scheduler if specified. If neither specified, the pod will be dispatched by default scheduler.|
 |`script`|[`ScriptTemplate`](#scripttemplate)|Script runs a portion of code against an interpreter|
@@ -1806,6 +1937,7 @@ Template is a reusable and composable unit of execution in a workflow
 |`synchronization`|[`Synchronization`](#synchronization)|Synchronization holds synchronization lock configuration for this template|
 |~`template`~|~`string`~|~Template is the name of the template which is used as the base of this template.~ DEPRECATED: This field is not used.|
 |~`templateRef`~|~[`TemplateRef`](#templateref)~|~TemplateRef is the reference to the template resource which is used as the base of this template.~ DEPRECATED: This field is not used.|
+|`timeout`|`string`|Timout allows to set the total node execution timeout duration counting from the node's start time. This duration also includes time in which the node spends in Pending state. This duration may not be applied to Step or DAG templates.|
 |`tolerations`|`Array<`[`Toleration`](#toleration)`>`|Tolerations to apply to workflow pods.|
 |`volumes`|`Array<`[`Volume`](#volume)`>`|Volumes is a list of volumes that can be mounted by containers in a template.|
 
@@ -1823,9 +1955,18 @@ TTLStrategy is the strategy for the time to live depending on if the workflow su
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`secondsAfterCompletion`|`int32`|SecondsAfterCompletion is the number of seconds to live after completion|
-|`secondsAfterFailure`|`int32`|SecondsAfterFailure is the number of seconds to live after failure|
-|`secondsAfterSuccess`|`int32`|SecondsAfterSuccess is the number of seconds to live after success|
+|`secondsAfterCompletion`|`integer`|SecondsAfterCompletion is the number of seconds to live after completion|
+|`secondsAfterFailure`|`integer`|SecondsAfterFailure is the number of seconds to live after failure|
+|`secondsAfterSuccess`|`integer`|SecondsAfterSuccess is the number of seconds to live after success|
+
+## VolumeClaimGC
+
+VolumeClaimGC describes how to delete volumes from completed Workflows
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`strategy`|`string`|Strategy is the strategy to use. One of "OnWorkflowCompletion", "OnWorkflowSuccess"|
 
 ## WorkflowTemplateRef
 
@@ -1841,6 +1982,8 @@ WorkflowTemplateRef is a reference to a WorkflowTemplate resource.
 
 - [`cron-backfill.yaml`](https://github.com/argoproj/argo/blob/master/examples/cron-backfill.yaml)
 
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
 - [`workflow-template-ref-with-entrypoint-arg-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/workflow-template-ref-with-entrypoint-arg-passing.yaml)
@@ -1853,6 +1996,25 @@ WorkflowTemplateRef is a reference to a WorkflowTemplate resource.
 |:----------:|:----------:|---------------|
 |`clusterScope`|`boolean`|ClusterScope indicates the referred template is cluster scoped (i.e. a ClusterWorkflowTemplate).|
 |`name`|`string`|Name is the resource name of the workflow template.|
+
+## ArtifactRepositoryRefStatus
+
+_No description available_
+
+<details>
+<summary>Examples with this field (click to open)</summary>
+<br>
+
+- [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
+</details>
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`configMap`|`string`|The name of the config map. Defaults to "artifact-repositories".|
+|`default`|`boolean`|If this ref represents the default artifact repository, rather than a config map.|
+|`key`|`string`|The config map key. Defaults to the value of the "workflows.argoproj.io/default-artifact-repository" annotation.|
+|`namespace`|`string`|The namespace of the config map. Defaults to the workflow's namespace, or the controller's namespace (if found).|
 
 ## Condition
 
@@ -1876,6 +2038,7 @@ NodeStatus contains status information about an individual node in the workflow
 |`children`|`Array< string >`|Children is a list of child node IDs|
 |`daemoned`|`boolean`|Daemoned tracks whether or not this node was daemoned and need to be terminated|
 |`displayName`|`string`|DisplayName is a human readable representation of the node. Unique within a template boundary|
+|`estimatedDuration`|`integer`|EstimatedDuration in seconds.|
 |`finishedAt`|[`Time`](#time)|Time at which this node completed|
 |`hostNodeName`|`string`|HostNodeName name of the Kubernetes node on which the Pod is running, if applicable|
 |`id`|`string`|ID is a unique identifier of a node within the worklow It is implemented as a hash of the node name, which makes the ID deterministic|
@@ -1887,9 +2050,11 @@ NodeStatus contains status information about an individual node in the workflow
 |`outputs`|[`Outputs`](#outputs)|Outputs captures output parameter values and artifact locations produced by this template invocation|
 |`phase`|`string`|Phase a simple, high-level summary of where the node is in its lifecycle. Can be used as a state machine.|
 |`podIP`|`string`|PodIP captures the IP of the pod for daemoned steps|
+|`progress`|`string`|Progress to completion|
 |`resourcesDuration`|`Map< integer , int64 >`|ResourcesDuration is indicative, but not accurate, resource duration. This is populated when the nodes completes.|
 |`startedAt`|[`Time`](#time)|Time at which this node started|
 |~`storedTemplateID`~|~`string`~|~StoredTemplateID is the ID of stored template.~ DEPRECATED: This value is not used anymore.|
+|`synchronizationStatus`|[`NodeSynchronizationStatus`](#nodesynchronizationstatus)|SynchronizationStatus is the synchronization status of the node|
 |`templateName`|`string`|TemplateName is the template name which this node corresponds to. Not applicable to virtual nodes (e.g. Retry, StepGroup)|
 |`templateRef`|[`TemplateRef`](#templateref)|TemplateRef is the reference to the template resource which this node corresponds to. Not applicable to virtual nodes (e.g. Retry, StepGroup)|
 |`templateScope`|`string`|TemplateScope is the template scope in which the template of this node was retrieved.|
@@ -1905,6 +2070,8 @@ Outputs hold parameters, artifacts, and results from a step
 <br>
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
+
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
 
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
@@ -1933,6 +2100,10 @@ Outputs hold parameters, artifacts, and results from a step
 - [`k8s-orchestration.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-orchestration.yaml)
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
+
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -1998,6 +2169,8 @@ Artifact indicates an artifact to place at a specified path
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -2032,6 +2205,10 @@ Artifact indicates an artifact to place at a specified path
 
 - [`input-artifact-s3.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-s3.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
+
 - [`nested-workflow.yaml`](https://github.com/argoproj/argo/blob/master/examples/nested-workflow.yaml)
 
 - [`output-artifact-gcs.yaml`](https://github.com/argoproj/argo/blob/master/examples/output-artifact-gcs.yaml)
@@ -2053,13 +2230,15 @@ Artifact indicates an artifact to place at a specified path
 |`globalName`|`string`|GlobalName exports an output artifact to the global scope, making it available as '{{io.argoproj.workflow.v1alpha1.outputs.artifacts.XXXX}} and in workflow.status.outputs.artifacts|
 |`hdfs`|[`HDFSArtifact`](#hdfsartifact)|HDFS contains HDFS artifact location details|
 |`http`|[`HTTPArtifact`](#httpartifact)|HTTP contains HTTP artifact location details|
-|`mode`|`int32`|mode bits to use on this file, must be a value between 0 and 0777 set when loading input artifacts.|
+|`mode`|`integer`|mode bits to use on this file, must be a value between 0 and 0777 set when loading input artifacts.|
 |`name`|`string`|name of the artifact. must be unique within a template's inputs/outputs.|
 |`optional`|`boolean`|Make Artifacts optional, if Artifacts doesn't generate or exist|
 |`oss`|[`OSSArtifact`](#ossartifact)|OSS contains OSS artifact location details|
 |`path`|`string`|Path is the container path to the artifact|
 |`raw`|[`RawArtifact`](#rawartifact)|Raw contains raw artifact location details|
+|`recurseMode`|`boolean`|If mode is set, apply the permission recursively into the artifact if it is a folder|
 |`s3`|[`S3Artifact`](#s3artifact)|S3 contains S3 artifact location details|
+|`subPath`|`string`|SubPath allows an artifact to be sourced from a subpath within the specified source|
 
 ## Parameter
 
@@ -2072,6 +2251,8 @@ Parameter indicate a passed string parameter to a service template with an optio
 - [`arguments-parameters.yaml`](https://github.com/argoproj/argo/blob/master/examples/arguments-parameters.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -2107,6 +2288,8 @@ Parameter indicate a passed string parameter to a service template with an optio
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
 
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
+
 - [`exit-code-output-variable.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-code-output-variable.yaml)
 
 - [`exit-handler-dag-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handler-dag-level.yaml)
@@ -2138,6 +2321,8 @@ Parameter indicate a passed string parameter to a service template with an optio
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -2179,6 +2364,8 @@ Parameter indicate a passed string parameter to a service template with an optio
 
 - [`scripts-python.yaml`](https://github.com/argoproj/argo/blob/master/examples/scripts-python.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -2188,6 +2375,10 @@ Parameter indicate a passed string parameter to a service template with an optio
 - [`synchronization-tmpl-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/synchronization-tmpl-level.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -2205,10 +2396,11 @@ Parameter indicate a passed string parameter to a service template with an optio
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`default`|[`IntOrString`](#intorstring)|Default is the default value to use for an input parameter if a value was not supplied|
+|`default`|`string`|Default is the default value to use for an input parameter if a value was not supplied|
+|`enum`|`Array< string >`|Enum holds a list of string values to choose from, for the actual value of the parameter|
 |`globalName`|`string`|GlobalName exports an output parameter to the global scope, making it available as '{{io.argoproj.workflow.v1alpha1.outputs.parameters.XXXX}} and in workflow.status.outputs.parameters|
 |`name`|`string`|Name is the parameter name|
-|`value`|[`IntOrString`](#intorstring)|Value is the literal value to use for the parameter. If specified in the context of an input parameter, the value takes precedence over any passed values|
+|`value`|`string`|Value is the literal value to use for the parameter. If specified in the context of an input parameter, the value takes precedence over any passed values|
 |`valueFrom`|[`ValueFrom`](#valuefrom)|ValueFrom is the source for the output parameter's value|
 
 ## Prometheus
@@ -2232,6 +2424,33 @@ Prometheus is a prometheus metric to be emitted
 |`labels`|`Array<`[`MetricLabel`](#metriclabel)`>`|Labels is a list of metric labels|
 |`name`|`string`|Name is the name of the metric|
 |`when`|`string`|When is a conditional statement that decides when to emit the metric|
+
+## RetryAffinity
+
+RetryAffinity prevents running steps on the same host.
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`nodeAntiAffinity`|[`RetryNodeAntiAffinity`](#retrynodeantiaffinity)|_No description available_|
+
+## Backoff
+
+Backoff is a backoff strategy to use within retryStrategy
+
+<details>
+<summary>Examples with this field (click to open)</summary>
+<br>
+
+- [`retry-backoff.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-backoff.yaml)
+</details>
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`duration`|`string`|Duration is the amount to back off. Default unit is seconds, but could also be a duration (e.g. "2m", "1h")|
+|`factor`|[`IntOrString`](#intorstring)|Factor is a factor to multiply the base duration after each failed retry|
+|`maxDuration`|`string`|MaxDuration is the maximum amount of time allowed for the backoff strategy|
 
 ## Mutex
 
@@ -2301,6 +2520,8 @@ DAGTemplate is a template subtype for directed acyclic graph templates
 <summary>Examples with this field (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`cluster-wftmpl-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/cluster-wftmpl-dag.yaml)
 
 - [`clustertemplates.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/clustertemplates.yaml)
@@ -2325,9 +2546,15 @@ DAGTemplate is a template subtype for directed acyclic graph templates
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
 
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
+
 - [`exit-handler-dag-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handler-dag-level.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`parallelism-nested-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-nested-dag.yaml)
 
@@ -2377,13 +2604,13 @@ UserContainer is a container specified by a user.
 |`readinessProbe`|[`Probe`](#probe)|Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
 |`resources`|[`ResourceRequirements`](#resourcerequirements)|Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/|
 |`securityContext`|[`SecurityContext`](#securitycontext)|Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/|
-|`startupProbe`|[`Probe`](#probe)|StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is an alpha feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
+|`startupProbe`|[`Probe`](#probe)|StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is a beta feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
 |`stdin`|`boolean`|Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.|
 |`stdinOnce`|`boolean`|Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false|
 |`terminationMessagePath`|`string`|Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.|
 |`terminationMessagePolicy`|`string`|Indicate how the termination message should be populated. File will use the contents of terminationMessagePath to populate the container status message on both success and failure. FallbackToLogsOnError will use the last chunk of container log output if the termination message file is empty and the container exited with an error. The log output is limited to 2048 bytes or 80 lines, whichever is smaller. Defaults to File. Cannot be updated.|
 |`tty`|`boolean`|Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.|
-|`volumeDevices`|`Array<`[`VolumeDevice`](#volumedevice)`>`|volumeDevices is the list of block devices to be used by the container. This is a beta feature.|
+|`volumeDevices`|`Array<`[`VolumeDevice`](#volumedevice)`>`|volumeDevices is the list of block devices to be used by the container.|
 |`volumeMounts`|`Array<`[`VolumeMount`](#volumemount)`>`|Pod volumes to mount into the container's filesystem. Cannot be updated.|
 |`workingDir`|`string`|Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.|
 
@@ -2401,11 +2628,15 @@ Inputs are the mechanism for passing parameters, artifacts, volumes from one tem
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -2432,6 +2663,8 @@ Inputs are the mechanism for passing parameters, artifacts, volumes from one tem
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`exit-code-output-variable.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-code-output-variable.yaml)
 
@@ -2463,6 +2696,8 @@ Inputs are the mechanism for passing parameters, artifacts, volumes from one tem
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -2474,6 +2709,8 @@ Inputs are the mechanism for passing parameters, artifacts, volumes from one tem
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -2509,11 +2746,15 @@ Inputs are the mechanism for passing parameters, artifacts, volumes from one tem
 
 - [`scripts-python.yaml`](https://github.com/argoproj/argo/blob/master/examples/scripts-python.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -2528,7 +2769,7 @@ Inputs are the mechanism for passing parameters, artifacts, volumes from one tem
 
 ## Memoize
 
-Memoization
+Memoization enables caching for the Outputs of the template
 
 <details>
 <summary>Examples with this field (click to open)</summary>
@@ -2540,8 +2781,9 @@ Memoization
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`cache`|[`Cache`](#cache)|_No description available_|
-|`key`|`string`|_No description available_|
+|`cache`|[`Cache`](#cache)|Cache sets and configures the kind of cache|
+|`key`|`string`|Key is the key to use as the caching key|
+|`maxAge`|`string`|MaxAge is the maximum age (e.g. "180s", "24h") of an entry that is still considered valid. If an entry is older than the MaxAge, it will be ignored.|
 
 ## Metadata
 
@@ -2559,6 +2801,8 @@ Pod metdata
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -2566,6 +2810,8 @@ Pod metdata
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -2622,6 +2868,8 @@ Pod metdata
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -2683,6 +2931,8 @@ Pod metdata
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -2694,6 +2944,8 @@ Pod metdata
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -2771,6 +3023,8 @@ Pod metdata
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -2800,6 +3054,10 @@ Pod metdata
 - [`volumes-pvc.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-pvc.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -2864,40 +3122,6 @@ ResourceTemplate is a template subtype to manipulate kubernetes resources
 |`setOwnerReference`|`boolean`|SetOwnerReference sets the reference to the workflow on the OwnerReference of generated resource.|
 |`successCondition`|`string`|SuccessCondition is a label selector expression which describes the conditions of the k8s resource in which it is acceptable to proceed to the following step|
 
-## RetryStrategy
-
-RetryStrategy provides controls on how to retry a workflow step
-
-<details>
-<summary>Examples with this field (click to open)</summary>
-<br>
-
-- [`clustertemplates.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/clustertemplates.yaml)
-
-- [`dag-disable-failFast.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-disable-failFast.yaml)
-
-- [`retry-backoff.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-backoff.yaml)
-
-- [`retry-container-to-completion.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container-to-completion.yaml)
-
-- [`retry-container.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container.yaml)
-
-- [`retry-on-error.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-on-error.yaml)
-
-- [`retry-script.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-script.yaml)
-
-- [`retry-with-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-with-steps.yaml)
-
-- [`templates.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/templates.yaml)
-</details>
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`backoff`|[`Backoff`](#backoff)|Backoff is a backoff strategy|
-|`limit`|[`IntOrString`](#intorstring)|Limit is the maximum number of attempts when retrying a container|
-|`retryPolicy`|`string`|RetryPolicy is a policy of NodePhase statuses that will be retried|
-
 ## ScriptTemplate
 
 ScriptTemplate is a template subtype to enable scripting through code steps
@@ -2918,7 +3142,7 @@ ScriptTemplate is a template subtype to enable scripting through code steps
 
 - [`loops-param-result.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-param-result.yaml)
 
-- [`parameter-aggregation-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/parameter-aggregation-dag.yaml)
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`parameter-aggregation-script.yaml`](https://github.com/argoproj/argo/blob/master/examples/parameter-aggregation-script.yaml)
 
@@ -2956,13 +3180,13 @@ ScriptTemplate is a template subtype to enable scripting through code steps
 |`resources`|[`ResourceRequirements`](#resourcerequirements)|Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/|
 |`securityContext`|[`SecurityContext`](#securitycontext)|Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/|
 |`source`|`string`|Source contains the source code of the script to execute|
-|`startupProbe`|[`Probe`](#probe)|StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is an alpha feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
+|`startupProbe`|[`Probe`](#probe)|StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is a beta feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
 |`stdin`|`boolean`|Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.|
 |`stdinOnce`|`boolean`|Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false|
 |`terminationMessagePath`|`string`|Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.|
 |`terminationMessagePolicy`|`string`|Indicate how the termination message should be populated. File will use the contents of terminationMessagePath to populate the container status message on both success and failure. FallbackToLogsOnError will use the last chunk of container log output if the termination message file is empty and the container exited with an error. The log output is limited to 2048 bytes or 80 lines, whichever is smaller. Defaults to File. Cannot be updated.|
 |`tty`|`boolean`|Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.|
-|`volumeDevices`|`Array<`[`VolumeDevice`](#volumedevice)`>`|volumeDevices is the list of block devices to be used by the container. This is a beta feature.|
+|`volumeDevices`|`Array<`[`VolumeDevice`](#volumedevice)`>`|volumeDevices is the list of block devices to be used by the container.|
 |`volumeMounts`|`Array<`[`VolumeMount`](#volumemount)`>`|Pod volumes to mount into the container's filesystem. Cannot be updated.|
 |`workingDir`|`string`|Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.|
 
@@ -2975,6 +3199,8 @@ WorkflowStep is a reference to a template to execute in a series of step
 <br>
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
+
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
 
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
@@ -3080,6 +3306,8 @@ WorkflowStep is a reference to a template to execute in a series of step
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -3099,6 +3327,8 @@ WorkflowStep is a reference to a template to execute in a series of step
 - [`volumes-pvc.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-pvc.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -3177,19 +3407,28 @@ TemplateRef is a reference of template resource.
 |:----------:|:----------:|---------------|
 |`clusterScope`|`boolean`|ClusterScope indicates the referred template is cluster scoped (i.e. a ClusterWorkflowTemplate).|
 |`name`|`string`|Name is the resource name of the template.|
-|`runtimeResolution`|`boolean`|RuntimeResolution skips validation at creation time. By enabling this option, you can create the referred workflow template before the actual runtime.|
+|~`runtimeResolution`~|~`boolean`~|~RuntimeResolution skips validation at creation time. By enabling this option, you can create the referred workflow template before the actual runtime.~ DEPRECATED: This value is not used anymore and is ignored|
 |`template`|`string`|Template is the name of referred template in the resource.|
 
 ## MemoizationStatus
 
-_No description available_
+MemoizationStatus is the status of this memoized node
 
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`cacheName`|`string`|_No description available_|
-|`hit`|`boolean`|_No description available_|
-|`key`|`string`|_No description available_|
+|`cacheName`|`string`|Cache is the name of the cache that was used|
+|`hit`|`boolean`|Hit indicates whether this node was created from a cache entry|
+|`key`|`string`|Key is the name of the key used for this node's cache|
+
+## NodeSynchronizationStatus
+
+NodeSynchronizationStatus stores the status of a node
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`waiting`|`string`|Waiting is the name of the lock that this node is waiting for|
 
 ## MutexStatus
 
@@ -3239,6 +3478,10 @@ ArchiveStrategy describes how to archive files/directory when saving artifacts
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
+
 - [`output-artifact-s3.yaml`](https://github.com/argoproj/argo/blob/master/examples/output-artifact-s3.yaml)
 </details>
 
@@ -3247,6 +3490,7 @@ ArchiveStrategy describes how to archive files/directory when saving artifacts
 |:----------:|:----------:|---------------|
 |`none`|[`NoneStrategy`](#nonestrategy)|_No description available_|
 |`tar`|[`TarStrategy`](#tarstrategy)|_No description available_|
+|`zip`|[`ZipStrategy`](#zipstrategy)|_No description available_|
 
 ## ArtifactoryArtifact
 
@@ -3294,6 +3538,8 @@ GitArtifact is the location of an git artifact
 <summary>Examples with this field (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
 - [`ci.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci.yaml)
@@ -3306,7 +3552,7 @@ GitArtifact is the location of an git artifact
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`depth`|`int64`|Depth specifies clones/fetches should be shallow and include the given number of commits from the branch tip|
+|`depth`|`integer`|Depth specifies clones/fetches should be shallow and include the given number of commits from the branch tip|
 |`fetch`|`Array< string >`|Fetch specifies a number of refs that should be fetched before checkout|
 |`insecureIgnoreHostKey`|`boolean`|InsecureIgnoreHostKey disables SSH strict host key checking during git clone|
 |`passwordSecret`|[`SecretKeySelector`](#secretkeyselector)|PasswordSecret is the secret selector to the repository password|
@@ -3372,6 +3618,7 @@ HTTPArtifact allows an file served on HTTP to be placed as an input artifact in 
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
+|`headers`|`Array<`[`Header`](#header)`>`|Headers are an optional list of headers to send with HTTP requests for artifacts|
 |`url`|`string`|URL of the artifact|
 
 ## OSSArtifact
@@ -3421,6 +3668,7 @@ S3Artifact is the location of an S3 artifact
 |:----------:|:----------:|---------------|
 |`accessKeySecret`|[`SecretKeySelector`](#secretkeyselector)|AccessKeySecret is the secret selector to the bucket's access key|
 |`bucket`|`string`|Bucket is the name of the bucket|
+|`createBucketIfNotPresent`|[`CreateS3BucketOptions`](#creates3bucketoptions)|CreateBucketIfNotPresent tells the driver to attempt to create the S3 bucket for output artifacts, if it doesn't exist|
 |`endpoint`|`string`|Endpoint is the hostname of the bucket endpoint|
 |`insecure`|`boolean`|Insecure will connect to the service with TLS|
 |`key`|`string`|Key is the key in the bucket where the artifact resides|
@@ -3466,12 +3714,14 @@ ValueFrom describes a location in which to obtain the value to a parameter
 - [`secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/secrets.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
 </details>
 
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`default`|[`IntOrString`](#intorstring)|Default specifies a value to be used if retrieving the value from the specified source fails|
+|`default`|`string`|Default specifies a value to be used if retrieving the value from the specified source fails|
 |`event`|`string`|Selector (https://github.com/antonmedv/expr) that is evaluated against the event to get the value of the parameter. E.g. `payload.message`|
 |`jqFilter`|`string`|JQFilter expression against the resource object in resource templates|
 |`jsonPath`|`string`|JSONPath of a resource to retrieve an output parameter value from in resource templates|
@@ -3554,6 +3804,10 @@ MetricLabel is a single label for a prometheus metric
 |`key`|`string`|_No description available_|
 |`value`|`string`|_No description available_|
 
+## RetryNodeAntiAffinity
+
+RetryNodeAntiAffinity is a placeholder for future expansion, only empty nodeAntiAffinity is allowed. In order to prevent running steps on the same host, it uses "kubernetes.io/hostname".
+
 ## DAGTask
 
 DAGTask represents a node in the graph during DAG execution
@@ -3561,6 +3815,8 @@ DAGTask represents a node in the graph during DAG execution
 <details>
 <summary>Examples with this field (click to open)</summary>
 <br>
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`cluster-wftmpl-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/cluster-wftmpl-dag.yaml)
 
@@ -3586,9 +3842,15 @@ DAGTask represents a node in the graph during DAG execution
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
 
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
+
 - [`exit-handler-dag-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handler-dag-level.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`parallelism-nested-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-nested-dag.yaml)
 
@@ -3621,7 +3883,7 @@ DAGTask represents a node in the graph during DAG execution
 
 ## Cache
 
-_No description available_
+Cache is the configuration for the type of cache to be used
 
 <details>
 <summary>Examples with this field (click to open)</summary>
@@ -3633,25 +3895,7 @@ _No description available_
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`configMap`|[`ConfigMapKeySelector`](#configmapkeyselector)|_No description available_|
-
-## Backoff
-
-Backoff is a backoff strategy to use within retryStrategy
-
-<details>
-<summary>Examples with this field (click to open)</summary>
-<br>
-
-- [`retry-backoff.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-backoff.yaml)
-</details>
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`duration`|`string`|Duration is the amount to back off. Default unit is seconds, but could also be a duration (e.g. "2m", "1h")|
-|`factor`|[`IntOrString`](#intorstring)|Factor is a factor to multiply the base duration after each failed retry|
-|`maxDuration`|`string`|MaxDuration is the maximum amount of time allowed for the backoff strategy|
+|`configMap`|[`ConfigMapKeySelector`](#configmapkeyselector)|ConfigMap sets a ConfigMap-based cache|
 
 ## ContinueOn
 
@@ -3670,6 +3914,8 @@ ContinueOn defines if a workflow should continue even if a task or step fails/er
 - [`resource-flags.yaml`](https://github.com/argoproj/argo/blob/master/examples/resource-flags.yaml)
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
+
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
 </details>
 
 ### Fields
@@ -3766,6 +4012,10 @@ NoneStrategy indicates to skip tar process and upload the files or directory tre
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
+
 - [`output-artifact-s3.yaml`](https://github.com/argoproj/argo/blob/master/examples/output-artifact-s3.yaml)
 </details>
 
@@ -3783,7 +4033,30 @@ TarStrategy will tar and gzip the file or directory when saving
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`compressionLevel`|`int32`|CompressionLevel specifies the gzip compression level to use for the artifact. Defaults to gzip.DefaultCompression.|
+|`compressionLevel`|`integer`|CompressionLevel specifies the gzip compression level to use for the artifact. Defaults to gzip.DefaultCompression.|
+
+## ZipStrategy
+
+ZipStrategy will unzip zipped input artifacts
+
+## Header
+
+Header indicate a key-value request header to be used when fetching artifacts over HTTP
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`name`|`string`|Name is the header name|
+|`value`|`string`|Value is the literal value to use for the header|
+
+## CreateS3BucketOptions
+
+CreateS3BucketOptions options used to determine automatic automatic bucket-creation process
+
+### Fields
+| Field Name | Field Type | Description   |
+|:----------:|:----------:|---------------|
+|`objectLocking`|`boolean`|ObjectLocking Enable object locking|
 
 ## SuppliedValueFrom
 
@@ -3826,6 +4099,8 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -3833,6 +4108,8 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -3889,6 +4166,8 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -3950,6 +4229,8 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -3961,6 +4242,8 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -4038,6 +4321,8 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -4068,6 +4353,10 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
 
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
+
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
 - [`dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/dag.yaml)
@@ -4090,20 +4379,19 @@ ObjectMeta is metadata that all persisted resources must have, which includes al
 |:----------:|:----------:|---------------|
 |`annotations`|`Map< string , string >`|Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations|
 |`clusterName`|`string`|The name of the cluster which the object belongs to. This is used to distinguish resources with same name and namespace in different clusters. This field is not set anywhere right now and apiserver is going to ignore it if set in create or update request.|
-|`creationTimestamp`|[`Time`](#time)|CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata|
-|`deletionGracePeriodSeconds`|`int64`|Number of seconds allowed for this object to gracefully terminate before it will be removed from the system. Only set when deletionTimestamp is also set. May only be shortened. Read-only.|
-|`deletionTimestamp`|[`Time`](#time)|DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource is expected to be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field, once the finalizers list is empty. As long as the finalizers list contains items, deletion is blocked. Once the deletionTimestamp is set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. After that 30 seconds, the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup, remove the pod from the API. In the presence of network partitions, this object may still exist after this timestamp, until an administrator or automated process can determine the resource is fully terminated. If not set, graceful deletion of the object has not been requested.Populated by the system when a graceful deletion is requested. Read-only. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata|
-|`finalizers`|`Array< string >`|Must be empty before the object is deleted from the registry. Each entry is an identifier for the responsible component that will remove the entry from the list. If the deletionTimestamp of the object is non-nil, entries in this list can only be removed.|
-|`generateName`|`string`|GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.If this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).Applied only if Name is not specified. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#idempotency|
-|`generation`|`int64`|A sequence number representing a specific generation of the desired state. Populated by the system. Read-only.|
-|~`initializers`~|~[`Initializers`](#initializers)~|~An initializer is a controller which enforces some system invariant at object creation time. This field is a list of initializers that have not yet acted on this object. If nil or empty, this object has been completely initialized. Otherwise, the object is considered uninitialized and is hidden (in list/watch and get calls) from clients that haven't explicitly asked to observe uninitialized objects.When an object is created, the system will populate this list with the current set of initializers. Only privileged users may set or modify this list. Once it is empty, it may not be modified further by any user~ DEPRECATED - initializers are an alpha field and will be removed in v1.15.|
+|`creationTimestamp`|[`Time`](#time)|CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata|
+|`deletionGracePeriodSeconds`|`integer`|Number of seconds allowed for this object to gracefully terminate before it will be removed from the system. Only set when deletionTimestamp is also set. May only be shortened. Read-only.|
+|`deletionTimestamp`|[`Time`](#time)|DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource is expected to be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field, once the finalizers list is empty. As long as the finalizers list contains items, deletion is blocked. Once the deletionTimestamp is set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. After that 30 seconds, the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup, remove the pod from the API. In the presence of network partitions, this object may still exist after this timestamp, until an administrator or automated process can determine the resource is fully terminated. If not set, graceful deletion of the object has not been requested.Populated by the system when a graceful deletion is requested. Read-only. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata|
+|`finalizers`|`Array< string >`|Must be empty before the object is deleted from the registry. Each entry is an identifier for the responsible component that will remove the entry from the list. If the deletionTimestamp of the object is non-nil, entries in this list can only be removed. Finalizers may be processed and removed in any order.  Order is NOT enforced because it introduces significant risk of stuck finalizers. finalizers is a shared field, any actor with permission can reorder it. If the finalizer list is processed in order, then this can lead to a situation in which the component responsible for the first finalizer in the list is waiting for a signal (field value, external system, or other) produced by a component responsible for a finalizer later in the list, resulting in a deadlock. Without enforced ordering finalizers are free to order amongst themselves and are not vulnerable to ordering changes in the list.|
+|`generateName`|`string`|GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.If this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).Applied only if Name is not specified. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency|
+|`generation`|`integer`|A sequence number representing a specific generation of the desired state. Populated by the system. Read-only.|
 |`labels`|`Map< string , string >`|Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: http://kubernetes.io/docs/user-guide/labels|
-|`managedFields`|`Array<`[`ManagedFieldsEntry`](#managedfieldsentry)`>`|ManagedFields maps workflow-id and version to the set of fields that are managed by that workflow. This is mostly for internal housekeeping, and users typically shouldn't need to set or understand this field. A workflow can be the user's name, a controller's name, or the name of a specific apply path like "ci-cd". The set of fields is always in the version that the workflow used when modifying the object.This field is alpha and can be changed or removed without notice.|
+|`managedFields`|`Array<`[`ManagedFieldsEntry`](#managedfieldsentry)`>`|ManagedFields maps workflow-id and version to the set of fields that are managed by that workflow. This is mostly for internal housekeeping, and users typically shouldn't need to set or understand this field. A workflow can be the user's name, a controller's name, or the name of a specific apply path like "ci-cd". The set of fields is always in the version that the workflow used when modifying the object.|
 |`name`|`string`|Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names|
 |`namespace`|`string`|Namespace defines the space within each name must be unique. An empty namespace is equivalent to the "default" namespace, but "default" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.Must be a DNS_LABEL. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/namespaces|
 |`ownerReferences`|`Array<`[`OwnerReference`](#ownerreference)`>`|List of objects depended by this object. If ALL objects in the list have been deleted, this object will be garbage collected. If this object is managed by a controller, then an entry in this list will point to this controller, with the controller field set to true. There cannot be more than one managing controller.|
-|`resourceVersion`|`string`|An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources.Populated by the system. Read-only. Value must be treated as opaque by clients and . More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency|
-|`selfLink`|`string`|SelfLink is a URL representing this object. Populated by the system. Read-only.|
+|`resourceVersion`|`string`|An opaque value that represents the internal version of this object that can be used by clients to determine when objects have changed. May be used for optimistic concurrency, change detection, and the watch operation on a resource or set of resources. Clients must treat these values as opaque and passed unmodified back to the server. They may only be valid for a particular resource or set of resources.Populated by the system. Read-only. Value must be treated as opaque by clients and . More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency|
+|~`selfLink`~|~`string`~|~SelfLink is a URL representing this object. Populated by the system. Read-only~ DEPRECATED Kubernetes will stop propagating this field in 1.20 release and the field is planned to be removed in 1.21 release.|
 |`uid`|`string`|UID is the unique in time and space value for this object. It is typically generated by the server on successful creation of a resource and is not allowed to change on PUT operations.Populated by the system. Read-only. More info: http://kubernetes.io/docs/user-guide/identifiers#uids|
 
 ## Affinity
@@ -4193,14 +4481,14 @@ PodSecurityContext holds pod-level security attributes and common container sett
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`fsGroup`|`int64`|A special supplemental group that applies to all containers in a pod. Some volume types allow the Kubelet to change the ownership of that volume to be owned by the pod:1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw----If unset, the Kubelet will not modify the ownership and permissions of any volume.|
-|`runAsGroup`|`int64`|The GID to run the entrypoint of the container process. Uses runtime default if unset. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.|
+|`fsGroup`|`integer`|A special supplemental group that applies to all containers in a pod. Some volume types allow the Kubelet to change the ownership of that volume to be owned by the pod:1. The owning GID will be the FSGroup 2. The setgid bit is set (new files created in the volume will be owned by FSGroup) 3. The permission bits are OR'd with rw-rw----If unset, the Kubelet will not modify the ownership and permissions of any volume.|
+|`runAsGroup`|`integer`|The GID to run the entrypoint of the container process. Uses runtime default if unset. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.|
 |`runAsNonRoot`|`boolean`|Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
-|`runAsUser`|`int64`|The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.|
+|`runAsUser`|`integer`|The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.|
 |`seLinuxOptions`|[`SELinuxOptions`](#selinuxoptions)|The SELinux context to be applied to all containers. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container.|
 |`supplementalGroups`|`Array< integer >`|A list of groups applied to the first process run in each container, in addition to the container's primary GID.  If unspecified, no groups will be added to any container.|
 |`sysctls`|`Array<`[`Sysctl`](#sysctl)`>`|Sysctls hold a list of namespaced sysctls used for the pod. Pods with unsupported sysctls (by the container runtime) might fail to launch.|
-|`windowsOptions`|[`WindowsSecurityContextOptions`](#windowssecuritycontextoptions)|Windows security options.|
+|`windowsOptions`|[`WindowsSecurityContextOptions`](#windowssecuritycontextoptions)|The Windows specific settings applied to all containers. If unspecified, the options within a container's SecurityContext will be used. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
 
 ## Toleration
 
@@ -4212,7 +4500,7 @@ The pod this Toleration is attached to tolerates any taint that matches the trip
 |`effect`|`string`|Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.|
 |`key`|`string`|Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.|
 |`operator`|`string`|Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.|
-|`tolerationSeconds`|`int64`|TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.|
+|`tolerationSeconds`|`integer`|TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.|
 |`value`|`string`|Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.|
 
 ## PersistentVolumeClaim
@@ -4230,6 +4518,8 @@ PersistentVolumeClaim is a user's request for and claim to a persistent volume
 <summary>Examples with this field (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
 - [`ci.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci.yaml)
@@ -4244,9 +4534,9 @@ PersistentVolumeClaim is a user's request for and claim to a persistent volume
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`apiVersion`|`string`|APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources|
-|`kind`|`string`|Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds|
-|`metadata`|[`ObjectMeta`](#objectmeta)|Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata|
+|`apiVersion`|`string`|APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources|
+|`kind`|`string`|Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds|
+|`metadata`|[`ObjectMeta`](#objectmeta)|Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata|
 |`spec`|[`PersistentVolumeClaimSpec`](#persistentvolumeclaimspec)|Spec defines the desired characteristics of a volume requested by a pod author. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims|
 |`status`|[`PersistentVolumeClaimStatus`](#persistentvolumeclaimstatus)|Status represents the current information/status of a persistent volume claim. Read-only. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims|
 
@@ -4257,6 +4547,8 @@ Volume represents a named volume in a pod that may be accessed by any container 
 <details>
 <summary>Examples with this field (click to open)</summary>
 <br>
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`init-container.yaml`](https://github.com/argoproj/argo/blob/master/examples/init-container.yaml)
 
@@ -4274,7 +4566,7 @@ Volume represents a named volume in a pod that may be accessed by any container 
 |`azureDisk`|[`AzureDiskVolumeSource`](#azurediskvolumesource)|AzureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.|
 |`azureFile`|[`AzureFileVolumeSource`](#azurefilevolumesource)|AzureFile represents an Azure File Service mount on the host and bind mount to the pod.|
 |`cephfs`|[`CephFSVolumeSource`](#cephfsvolumesource)|CephFS represents a Ceph FS mount on the host that shares a pod's lifetime|
-|`cinder`|[`CinderVolumeSource`](#cindervolumesource)|Cinder represents a cinder volume attached and mounted on kubelets host machine More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md|
+|`cinder`|[`CinderVolumeSource`](#cindervolumesource)|Cinder represents a cinder volume attached and mounted on kubelets host machine. More info: https://examples.k8s.io/mysql-cinder-pd/README.md|
 |`configMap`|[`ConfigMapVolumeSource`](#configmapvolumesource)|ConfigMap represents a configMap that should populate this volume|
 |`csi`|[`CSIVolumeSource`](#csivolumesource)|CSI (Container Storage Interface) represents storage that is handled by an external CSI driver (Alpha feature).|
 |`downwardAPI`|[`DownwardAPIVolumeSource`](#downwardapivolumesource)|DownwardAPI represents downward API about the pod that should populate this volume|
@@ -4284,9 +4576,9 @@ Volume represents a named volume in a pod that may be accessed by any container 
 |`flocker`|[`FlockerVolumeSource`](#flockervolumesource)|Flocker represents a Flocker volume attached to a kubelet's host machine. This depends on the Flocker control service being running|
 |`gcePersistentDisk`|[`GCEPersistentDiskVolumeSource`](#gcepersistentdiskvolumesource)|GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk|
 |~`gitRepo`~|~[`GitRepoVolumeSource`](#gitrepovolumesource)~|~GitRepo represents a git repository at a particular revision.~ DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.|
-|`glusterfs`|[`GlusterfsVolumeSource`](#glusterfsvolumesource)|Glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://releases.k8s.io/HEAD/examples/volumes/glusterfs/README.md|
+|`glusterfs`|[`GlusterfsVolumeSource`](#glusterfsvolumesource)|Glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/glusterfs/README.md|
 |`hostPath`|[`HostPathVolumeSource`](#hostpathvolumesource)|HostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath|
-|`iscsi`|[`ISCSIVolumeSource`](#iscsivolumesource)|ISCSI represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://releases.k8s.io/HEAD/examples/volumes/iscsi/README.md|
+|`iscsi`|[`ISCSIVolumeSource`](#iscsivolumesource)|ISCSI represents an ISCSI Disk resource that is attached to a kubelet's host machine and then exposed to the pod. More info: https://examples.k8s.io/volumes/iscsi/README.md|
 |`name`|`string`|Volume's name. Must be a DNS_LABEL and unique within the pod. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names|
 |`nfs`|[`NFSVolumeSource`](#nfsvolumesource)|NFS represents an NFS mount on the host that shares a pod's lifetime More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs|
 |`persistentVolumeClaim`|[`PersistentVolumeClaimVolumeSource`](#persistentvolumeclaimvolumesource)|PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims|
@@ -4294,7 +4586,7 @@ Volume represents a named volume in a pod that may be accessed by any container 
 |`portworxVolume`|[`PortworxVolumeSource`](#portworxvolumesource)|PortworxVolume represents a portworx volume attached and mounted on kubelets host machine|
 |`projected`|[`ProjectedVolumeSource`](#projectedvolumesource)|Items for all in one resources secrets, configmaps, and downward API|
 |`quobyte`|[`QuobyteVolumeSource`](#quobytevolumesource)|Quobyte represents a Quobyte mount on the host that shares a pod's lifetime|
-|`rbd`|[`RBDVolumeSource`](#rbdvolumesource)|RBD represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md|
+|`rbd`|[`RBDVolumeSource`](#rbdvolumesource)|RBD represents a Rados Block Device mount on the host that shares a pod's lifetime. More info: https://examples.k8s.io/volumes/rbd/README.md|
 |`scaleIO`|[`ScaleIOVolumeSource`](#scaleiovolumesource)|ScaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.|
 |`secret`|[`SecretVolumeSource`](#secretvolumesource)|Secret represents a secret that should populate this volume. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret|
 |`storageos`|[`StorageOSVolumeSource`](#storageosvolumesource)|StorageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.|
@@ -4313,23 +4605,35 @@ ObjectReference contains enough information to let you inspect or modify the ref
 |:----------:|:----------:|---------------|
 |`apiVersion`|`string`|API version of the referent.|
 |`fieldPath`|`string`|If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: "spec.containers{name}" (where "name" refers to the name of the container that triggered the event) or if no container name is specified "spec.containers[2]" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.|
-|`kind`|`string`|Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds|
+|`kind`|`string`|Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds|
 |`name`|`string`|Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names|
 |`namespace`|`string`|Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/|
-|`resourceVersion`|`string`|Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency|
+|`resourceVersion`|`string`|Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency|
 |`uid`|`string`|UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids|
 
 ## IntOrString
 
-IntOrString is a type that can hold an int32 or a string.  When used in JSON or YAML marshalling and unmarshalling, it produces or consumes the inner type.  This allows you to have, for example, a JSON field that can accept a name or number.
+_No description available_
 
 <details>
 <summary>Examples with this field (click to open)</summary>
 <br>
 
-- [`timeouts-step.yaml`](https://github.com/argoproj/argo/blob/master/examples/timeouts-step.yaml)
+- [`clustertemplates.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/clustertemplates.yaml)
 
-- [`timeouts-workflow.yaml`](https://github.com/argoproj/argo/blob/master/examples/timeouts-workflow.yaml)
+- [`dag-disable-failFast.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-disable-failFast.yaml)
+
+- [`retry-backoff.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-backoff.yaml)
+
+- [`retry-container.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container.yaml)
+
+- [`retry-on-error.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-on-error.yaml)
+
+- [`retry-script.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-script.yaml)
+
+- [`retry-with-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-with-steps.yaml)
+
+- [`templates.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/templates.yaml)
 </details>
 
 ## Container
@@ -4348,6 +4652,8 @@ A single application container that you want to run within a pod.
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -4355,6 +4661,8 @@ A single application container that you want to run within a pod.
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -4399,6 +4707,8 @@ A single application container that you want to run within a pod.
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -4453,6 +4763,8 @@ A single application container that you want to run within a pod.
 - [`k8s-orchestration.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-orchestration.yaml)
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
+
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
 
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
@@ -4530,6 +4842,8 @@ A single application container that you want to run within a pod.
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -4558,6 +4872,8 @@ A single application container that you want to run within a pod.
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
 
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
+
 - [`templates.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/templates.yaml)
 </details>
 
@@ -4577,6 +4893,7 @@ A single application container that you want to run within a pod.
 |`readinessProbe`|[`Probe`](#probe)|Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
 |`resources`|[`ResourceRequirements`](#resourcerequirements)|Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/|
 |`securityContext`|[`SecurityContext`](#securitycontext)|Security options the pod should run with. More info: https://kubernetes.io/docs/concepts/policy/security-context/ More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/|
+|`startupProbe`|[`Probe`](#probe)|StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. This is an alpha feature enabled by the StartupProbe feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
 |`stdin`|`boolean`|Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.|
 |`stdinOnce`|`boolean`|Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false|
 |`terminationMessagePath`|`string`|Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.|
@@ -4614,6 +4931,8 @@ EnvVar represents an environment variable present in a Container.
 <summary>Examples with this field (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`colored-logs.yaml`](https://github.com/argoproj/argo/blob/master/examples/colored-logs.yaml)
 
 - [`secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/secrets.yaml)
@@ -4647,7 +4966,7 @@ Lifecycle describes actions that the management system should take in response t
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`postStart`|[`Handler`](#handler)|PostStart is called immediately after a container is created. If the handler fails, the container is terminated and restarted according to its restart policy. Other management of the container blocks until the hook completes. More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks|
-|`preStop`|[`Handler`](#handler)|PreStop is called immediately before a container is terminated due to an API request or management event such as liveness probe failure, preemption, resource contention, etc. The handler is not called if the container crashes or exits. The reason for termination is passed to the handler. The Pod's termination grace period countdown begins before the PreStop hooked is executed. Regardless of the outcome of the handler, the container will eventually terminate within the Pod's termination grace period. Other management of the container blocks until the hook completes or until the termination grace period is reached. More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks|
+|`preStop`|[`Handler`](#handler)|PreStop is called immediately before a container is terminated due to an API request or management event such as liveness/startup probe failure, preemption, resource contention, etc. The handler is not called if the container crashes or exits. The reason for termination is passed to the handler. The Pod's termination grace period countdown begins before the PreStop hooked is executed. Regardless of the outcome of the handler, the container will eventually terminate within the Pod's termination grace period. Other management of the container blocks until the hook completes or until the termination grace period is reached. More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks|
 
 ## Probe
 
@@ -4657,13 +4976,13 @@ Probe describes a health check to be performed against a container to determine 
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`exec`|[`ExecAction`](#execaction)|One and only one of the following should be specified. Exec specifies the action to take.|
-|`failureThreshold`|`int32`|Minimum consecutive failures for the probe to be considered failed after having succeeded. Defaults to 3. Minimum value is 1.|
+|`failureThreshold`|`integer`|Minimum consecutive failures for the probe to be considered failed after having succeeded. Defaults to 3. Minimum value is 1.|
 |`httpGet`|[`HTTPGetAction`](#httpgetaction)|HTTPGet specifies the http request to perform.|
-|`initialDelaySeconds`|`int32`|Number of seconds after the container has started before liveness probes are initiated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
-|`periodSeconds`|`int32`|How often (in seconds) to perform the probe. Default to 10 seconds. Minimum value is 1.|
-|`successThreshold`|`int32`|Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1. Must be 1 for liveness. Minimum value is 1.|
+|`initialDelaySeconds`|`integer`|Number of seconds after the container has started before liveness probes are initiated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
+|`periodSeconds`|`integer`|How often (in seconds) to perform the probe. Default to 10 seconds. Minimum value is 1.|
+|`successThreshold`|`integer`|Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1. Must be 1 for liveness and startup. Minimum value is 1.|
 |`tcpSocket`|[`TCPSocketAction`](#tcpsocketaction)|TCPSocket specifies an action involving a TCP port. TCP hooks not yet supported|
-|`timeoutSeconds`|`int32`|Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
+|`timeoutSeconds`|`integer`|Number of seconds after which the probe times out. Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes|
 
 ## ContainerPort
 
@@ -4679,9 +4998,9 @@ ContainerPort represents a network port in a single container.
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`containerPort`|`int32`|Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536.|
+|`containerPort`|`integer`|Number of port to expose on the pod's IP address. This must be a valid port number, 0 < x < 65536.|
 |`hostIP`|`string`|What host IP to bind the external port to.|
-|`hostPort`|`int32`|Number of port to expose on the host. If specified, this must be a valid port number, 0 < x < 65536. If HostNetwork is specified, this must match ContainerPort. Most containers do not need this.|
+|`hostPort`|`integer`|Number of port to expose on the host. If specified, this must be a valid port number, 0 < x < 65536. If HostNetwork is specified, this must match ContainerPort. Most containers do not need this.|
 |`name`|`string`|If specified, this must be an IANA_SVC_NAME and unique within the pod. Each named port in a pod must have a unique name. Name for the port that can be referred to by services.|
 |`protocol`|`string`|Protocol for port. Must be UDP, TCP, or SCTP. Defaults to "TCP".|
 
@@ -4692,6 +5011,8 @@ ResourceRequirements describes the compute resource requirements.
 <details>
 <summary>Examples with this field (click to open)</summary>
 <br>
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -4739,11 +5060,11 @@ SecurityContext holds security configuration that will be applied to a container
 |`privileged`|`boolean`|Run container in privileged mode. Processes in privileged containers are essentially equivalent to root on the host. Defaults to false.|
 |`procMount`|`string`|procMount denotes the type of proc mount to use for the containers. The default is DefaultProcMount which uses the container runtime defaults for readonly paths and masked paths. This requires the ProcMountType feature flag to be enabled.|
 |`readOnlyRootFilesystem`|`boolean`|Whether this container has a read-only root filesystem. Default is false.|
-|`runAsGroup`|`int64`|The GID to run the entrypoint of the container process. Uses runtime default if unset. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
+|`runAsGroup`|`integer`|The GID to run the entrypoint of the container process. Uses runtime default if unset. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
 |`runAsNonRoot`|`boolean`|Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
-|`runAsUser`|`int64`|The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
+|`runAsUser`|`integer`|The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
 |`seLinuxOptions`|[`SELinuxOptions`](#selinuxoptions)|The SELinux context to be applied to the container. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
-|`windowsOptions`|[`WindowsSecurityContextOptions`](#windowssecuritycontextoptions)|Windows security options.|
+|`windowsOptions`|[`WindowsSecurityContextOptions`](#windowssecuritycontextoptions)|The Windows specific settings applied to all containers. If unspecified, the options from the PodSecurityContext will be used. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.|
 
 ## VolumeDevice
 
@@ -4762,6 +5083,8 @@ VolumeMount describes a mounting of a Volume within a container.
 <details>
 <summary>Examples with this field (click to open)</summary>
 <br>
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -4790,7 +5113,7 @@ VolumeMount describes a mounting of a Volume within a container.
 |`name`|`string`|This must match the Name of a Volume.|
 |`readOnly`|`boolean`|Mounted read-only if true, read-write otherwise (false or unspecified). Defaults to false.|
 |`subPath`|`string`|Path within the volume from which the container's volume should be mounted. Defaults to "" (volume's root).|
-|`subPathExpr`|`string`|Expanded path within the volume from which the container's volume should be mounted. Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment. Defaults to "" (volume's root). SubPathExpr and SubPath are mutually exclusive. This field is beta in 1.15.|
+|`subPathExpr`|`string`|Expanded path within the volume from which the container's volume should be mounted. Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment. Defaults to "" (volume's root). SubPathExpr and SubPath are mutually exclusive.|
 
 ## SecretKeySelector
 
@@ -4812,16 +5135,6 @@ SecretKeySelector selects a key of a Secret.
 |`name`|`string`|Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names|
 |`optional`|`boolean`|Specify whether the Secret or its key must be defined|
 
-## Initializers
-
-Initializers tracks the progress of initialization.
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`pending`|`Array<`[`Initializer`](#initializer)`>`|Pending is a list of initializers that must execute in order before this object is visible. When the last pending initializer is removed, and no failing result is set, the initializers struct will be set to nil and the object is considered as initialized and visible to all clients.|
-|`result`|[`Status`](#status)|If result is set with the Failure field, the object will be persisted to storage and then deleted, ensuring that other clients can observe the deletion.|
-
 ## ManagedFieldsEntry
 
 ManagedFieldsEntry is a workflow-id, a FieldSet and the group version of the resource that the fieldset applies to.
@@ -4830,7 +5143,8 @@ ManagedFieldsEntry is a workflow-id, a FieldSet and the group version of the res
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`apiVersion`|`string`|APIVersion defines the version of this resource that this field set applies to. The format is "group/version" just like the top-level APIVersion field. It is necessary to track the version of a field set because it cannot be automatically converted.|
-|`fields`|[`Fields`](#fields)|Fields identifies a set of fields.|
+|`fieldsType`|`string`|FieldsType is the discriminator for the different fields format and version. There is currently only one possible value: "FieldsV1"|
+|`fieldsV1`|[`FieldsV1`](#fieldsv1)|FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.|
 |`manager`|`string`|Manager is an identifier of the workflow managing these fields.|
 |`operation`|`string`|Operation is the type of operation which lead to this ManagedFieldsEntry being created. The only valid values for this field are 'Apply' and 'Update'.|
 |`time`|[`Time`](#time)|Time is timestamp of when these fields were set. It should always be empty if Operation is 'Apply'|
@@ -4852,7 +5166,7 @@ OwnerReference contains enough information to let you identify an owning object.
 |`apiVersion`|`string`|API version of the referent.|
 |`blockOwnerDeletion`|`boolean`|If true, AND if the owner has the "foregroundDeletion" finalizer, then the owner cannot be deleted from the key-value store until this reference is removed. Defaults to false. To set this field, a user needs "delete" permission of the owner, otherwise 422 (Unprocessable Entity) will be returned.|
 |`controller`|`boolean`|If true, this reference points to the managing controller.|
-|`kind`|`string`|Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds|
+|`kind`|`string`|Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds|
 |`name`|`string`|Name of the referent. More info: http://kubernetes.io/docs/user-guide/identifiers#names|
 |`uid`|`string`|UID of the referent. More info: http://kubernetes.io/docs/user-guide/identifiers#uids|
 
@@ -4912,6 +5226,8 @@ A label selector is a label query over a set of resources. The result of matchLa
 <br>
 
 - [`daemoned-stateful-set-with-service.yaml`](https://github.com/argoproj/argo/blob/master/examples/daemoned-stateful-set-with-service.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
 </details>
 
 ### Fields
@@ -4951,6 +5267,7 @@ WindowsSecurityContextOptions contain Windows-specific options and credentials.
 |:----------:|:----------:|---------------|
 |`gmsaCredentialSpec`|`string`|GMSACredentialSpec is where the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa) inlines the contents of the GMSA credential spec named by the GMSACredentialSpecName field. This field is alpha-level and is only honored by servers that enable the WindowsGMSA feature flag.|
 |`gmsaCredentialSpecName`|`string`|GMSACredentialSpecName is the name of the GMSA credential spec to use. This field is alpha-level and is only honored by servers that enable the WindowsGMSA feature flag.|
+|`runAsUserName`|`string`|The UserName in Windows to run the entrypoint of the container process. Defaults to the user specified in image metadata if unspecified. May also be set in PodSecurityContext. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. This field is beta-level and may be disabled with the WindowsRunAsUserName feature flag.|
 
 ## PersistentVolumeClaimSpec
 
@@ -4968,6 +5285,8 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 
 - [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
 
+- [`artifact-passing-subpath.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing-subpath.yaml)
+
 - [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
 
 - [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
@@ -4975,6 +5294,8 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 - [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
 
 - [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
+
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
 
 - [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
 
@@ -5031,6 +5352,8 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 - [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
 
 - [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
+
+- [`dag-task-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-task-level-timeout.yaml)
 
 - [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
 
@@ -5092,6 +5415,8 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 
 - [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
 
+- [`key-only-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/key-only-artifact.yaml)
+
 - [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
 
 - [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
@@ -5103,6 +5428,8 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 - [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
 
 - [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
+
+- [`map-reduce.yaml`](https://github.com/argoproj/argo/blob/master/examples/map-reduce.yaml)
 
 - [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
 
@@ -5180,6 +5507,8 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 
 - [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
 
+- [`step-level-timeout.yaml`](https://github.com/argoproj/argo/blob/master/examples/step-level-timeout.yaml)
+
 - [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
@@ -5209,6 +5538,10 @@ PersistentVolumeClaimSpec describes the common attributes of storage devices and
 - [`volumes-pvc.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-pvc.yaml)
 
 - [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
+
+- [`event-consumer-workflowtemplate.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workflowtemplate.yaml)
 
 - [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
 
@@ -5258,7 +5591,7 @@ Represents a Persistent Disk resource in AWS.An AWS EBS disk must exist before m
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`fsType`|`string`|Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore|
-|`partition`|`int32`|The partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as "1". Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty).|
+|`partition`|`integer`|The partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as "1". Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty).|
 |`readOnly`|`boolean`|Specify "true" to force and set the ReadOnly property in VolumeMounts to "true". If omitted, the default is "false". More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore|
 |`volumeID`|`string`|Unique ID of the persistent disk resource in AWS (Amazon EBS volume). More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore|
 
@@ -5294,12 +5627,12 @@ Represents a Ceph Filesystem mount that lasts the lifetime of a pod Cephfs volum
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`monitors`|`Array< string >`|Required: Monitors is a collection of Ceph monitors More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it|
+|`monitors`|`Array< string >`|Required: Monitors is a collection of Ceph monitors More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it|
 |`path`|`string`|Optional: Used as the mounted root, rather than the full Ceph tree, default is /|
-|`readOnly`|`boolean`|Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it|
-|`secretFile`|`string`|Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it|
-|`secretRef`|[`LocalObjectReference`](#localobjectreference)|Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it|
-|`user`|`string`|Optional: User is the rados user name, default is admin More info: https://releases.k8s.io/HEAD/examples/volumes/cephfs/README.md#how-to-use-it|
+|`readOnly`|`boolean`|Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it|
+|`secretFile`|`string`|Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it|
+|`secretRef`|[`LocalObjectReference`](#localobjectreference)|Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it|
+|`user`|`string`|Optional: User is the rados user name, default is admin More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it|
 
 ## CinderVolumeSource
 
@@ -5308,10 +5641,10 @@ Represents a cinder volume resource in Openstack. A Cinder volume must exist bef
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`fsType`|`string`|Filesystem type to mount. Must be a filesystem type supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md|
-|`readOnly`|`boolean`|Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md|
+|`fsType`|`string`|Filesystem type to mount. Must be a filesystem type supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://examples.k8s.io/mysql-cinder-pd/README.md|
+|`readOnly`|`boolean`|Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: https://examples.k8s.io/mysql-cinder-pd/README.md|
 |`secretRef`|[`LocalObjectReference`](#localobjectreference)|Optional: points to a secret object containing parameters used to connect to OpenStack.|
-|`volumeID`|`string`|volume id used to identify the volume in cinder More info: https://releases.k8s.io/HEAD/examples/mysql-cinder-pd/README.md|
+|`volumeID`|`string`|volume id used to identify the volume in cinder. More info: https://examples.k8s.io/mysql-cinder-pd/README.md|
 
 ## ConfigMapVolumeSource
 
@@ -5327,7 +5660,7 @@ Adapts a ConfigMap into a volume.The contents of the target ConfigMap's Data fie
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`defaultMode`|`int32`|Optional: mode bits to use on created files by default. Must be a value between 0 and 0777. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
+|`defaultMode`|`integer`|Optional: mode bits to use on created files by default. Must be a value between 0 and 0777. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
 |`items`|`Array<`[`KeyToPath`](#keytopath)`>`|If unspecified, each key-value pair in the Data field of the referenced ConfigMap will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the ConfigMap, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the '..' path or start with '..'.|
 |`name`|`string`|Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names|
 |`optional`|`boolean`|Specify whether the ConfigMap or its keys must be defined|
@@ -5352,7 +5685,7 @@ DownwardAPIVolumeSource represents a volume containing downward API info. Downwa
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`defaultMode`|`int32`|Optional: mode bits to use on created files by default. Must be a value between 0 and 0777. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
+|`defaultMode`|`integer`|Optional: mode bits to use on created files by default. Must be a value between 0 and 0777. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
 |`items`|`Array<`[`DownwardAPIVolumeFile`](#downwardapivolumefile)`>`|Items is a list of downward API volume file|
 
 ## EmptyDirVolumeSource
@@ -5382,7 +5715,7 @@ Represents a Fibre Channel volume. Fibre Channel volumes can only be mounted as 
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`fsType`|`string`|Filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified.|
-|`lun`|`int32`|Optional: FC target lun number|
+|`lun`|`integer`|Optional: FC target lun number|
 |`readOnly`|`boolean`|Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.|
 |`targetWWNs`|`Array< string >`|Optional: FC target worldwide names (WWNs)|
 |`wwids`|`Array< string >`|Optional: FC volume world wide identifiers (wwids) Either wwids or combination of targetWWNs and lun must be set, but not both simultaneously.|
@@ -5418,7 +5751,7 @@ Represents a Persistent Disk resource in Google Compute Engine.A GCE PD must exi
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`fsType`|`string`|Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk|
-|`partition`|`int32`|The partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as "1". Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty). More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk|
+|`partition`|`integer`|The partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as "1". Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty). More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk|
 |`pdName`|`string`|Unique name of the PD resource in GCE. Used to identify the disk in GCE. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk|
 |`readOnly`|`boolean`|ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk|
 
@@ -5440,9 +5773,9 @@ Represents a Glusterfs mount that lasts the lifetime of a pod. Glusterfs volumes
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`endpoints`|`string`|EndpointsName is the endpoint name that details Glusterfs topology. More info: https://releases.k8s.io/HEAD/examples/volumes/glusterfs/README.md#create-a-pod|
-|`path`|`string`|Path is the Glusterfs volume path. More info: https://releases.k8s.io/HEAD/examples/volumes/glusterfs/README.md#create-a-pod|
-|`readOnly`|`boolean`|ReadOnly here will force the Glusterfs volume to be mounted with read-only permissions. Defaults to false. More info: https://releases.k8s.io/HEAD/examples/volumes/glusterfs/README.md#create-a-pod|
+|`endpoints`|`string`|EndpointsName is the endpoint name that details Glusterfs topology. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod|
+|`path`|`string`|Path is the Glusterfs volume path. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod|
+|`readOnly`|`boolean`|ReadOnly here will force the Glusterfs volume to be mounted with read-only permissions. Defaults to false. More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod|
 
 ## HostPathVolumeSource
 
@@ -5467,7 +5800,7 @@ Represents an ISCSI disk. ISCSI volumes can only be mounted as read/write once. 
 |`initiatorName`|`string`|Custom iSCSI Initiator Name. If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface <target portal>:<volume name> will be created for the connection.|
 |`iqn`|`string`|Target iSCSI Qualified Name.|
 |`iscsiInterface`|`string`|iSCSI Interface Name that uses an iSCSI transport. Defaults to 'default' (tcp).|
-|`lun`|`int32`|iSCSI Target Lun number.|
+|`lun`|`integer`|iSCSI Target Lun number.|
 |`portals`|`Array< string >`|iSCSI Target Portal List. The portal is either an IP or ip_addr:port if the port is other than default (typically TCP ports 860 and 3260).|
 |`readOnly`|`boolean`|ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false.|
 |`secretRef`|[`LocalObjectReference`](#localobjectreference)|CHAP Secret for iSCSI target and initiator authentication|
@@ -5529,7 +5862,7 @@ Represents a projected volume source
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`defaultMode`|`int32`|Mode bits to use on created files by default. Must be a value between 0 and 0777. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
+|`defaultMode`|`integer`|Mode bits to use on created files by default. Must be a value between 0 and 0777. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
 |`sources`|`Array<`[`VolumeProjection`](#volumeprojection)`>`|list of volume projections|
 
 ## QuobyteVolumeSource
@@ -5554,13 +5887,13 @@ Represents a Rados Block Device mount that lasts the lifetime of a pod. RBD volu
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`fsType`|`string`|Filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: "ext4", "xfs", "ntfs". Implicitly inferred to be "ext4" if unspecified. More info: https://kubernetes.io/docs/concepts/storage/volumes#rbd|
-|`image`|`string`|The rados image name. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
-|`keyring`|`string`|Keyring is the path to key ring for RBDUser. Default is /etc/ceph/keyring. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
-|`monitors`|`Array< string >`|A collection of Ceph monitors. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
-|`pool`|`string`|The rados pool name. Default is rbd. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
-|`readOnly`|`boolean`|ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
-|`secretRef`|[`LocalObjectReference`](#localobjectreference)|SecretRef is name of the authentication secret for RBDUser. If provided overrides keyring. Default is nil. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
-|`user`|`string`|The rados user name. Default is admin. More info: https://releases.k8s.io/HEAD/examples/volumes/rbd/README.md#how-to-use-it|
+|`image`|`string`|The rados image name. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
+|`keyring`|`string`|Keyring is the path to key ring for RBDUser. Default is /etc/ceph/keyring. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
+|`monitors`|`Array< string >`|A collection of Ceph monitors. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
+|`pool`|`string`|The rados pool name. Default is rbd. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
+|`readOnly`|`boolean`|ReadOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
+|`secretRef`|[`LocalObjectReference`](#localobjectreference)|SecretRef is name of the authentication secret for RBDUser. If provided overrides keyring. Default is nil. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
+|`user`|`string`|The rados user name. Default is admin. More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it|
 
 ## ScaleIOVolumeSource
 
@@ -5588,13 +5921,15 @@ Adapts a Secret into a volume.The contents of the target Secret's Data field wil
 <summary>Examples with this field (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/secrets.yaml)
 </details>
 
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
-|`defaultMode`|`int32`|Optional: mode bits to use on created files by default. Must be a value between 0 and 0777. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
+|`defaultMode`|`integer`|Optional: mode bits to use on created files by default. Must be a value between 0 and 0777. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
 |`items`|`Array<`[`KeyToPath`](#keytopath)`>`|If unspecified, each key-value pair in the Data field of the referenced Secret will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the Secret, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the '..' path or start with '..'.|
 |`optional`|`boolean`|Specify whether the Secret or its keys must be defined|
 |`secretName`|`string`|Name of the secret in the pod's namespace to use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret|
@@ -5661,13 +5996,15 @@ EnvVarSource represents a source for the value of an EnvVar.
 - [`secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/secrets.yaml)
 
 - [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
+
+- [`event-consumer-workfloweventbinding.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-event-binding/event-consumer-workfloweventbinding.yaml)
 </details>
 
 ### Fields
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`configMapKeyRef`|[`ConfigMapKeySelector`](#configmapkeyselector)|Selects a key of a ConfigMap.|
-|`fieldRef`|[`ObjectFieldSelector`](#objectfieldselector)|Selects a field of the pod: supports metadata.name, metadata.namespace, metadata.labels, metadata.annotations, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP.|
+|`fieldRef`|[`ObjectFieldSelector`](#objectfieldselector)|Selects a field of the pod: supports metadata.name, metadata.namespace, metadata.labels, metadata.annotations, spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.|
 |`resourceFieldRef`|[`ResourceFieldSelector`](#resourcefieldselector)|Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.|
 |`secretKeyRef`|[`SecretKeySelector`](#secretkeyselector)|Selects a key of a secret in the pod's namespace|
 
@@ -5749,7 +6086,7 @@ TCPSocketAction describes an action based on opening a socket
 
 ## Quantity
 
-Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and Int64() accessors.The serialization format is:<quantity>        ::= <signedNumber><suffix>  (Note that <suffix> may be empty, from the "" case in <decimalSI>.)<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)<decimalSI>       ::= m | "" | k | M | G | T | P | E  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)<decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:  a. No precision is lost  b. No fractional digits will be emitted  c. The exponent (or suffix) is as large as possible.The sign will be omitted unless the number is negative.Examples:  1.5 will be serialized as "1500m"  1.5Gi will be serialized as "1536Mi"Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.The serialization format is:<quantity>        ::= <signedNumber><suffix>  (Note that <suffix> may be empty, from the "" case in <decimalSI>.)<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)<decimalSI>       ::= m | "" | k | M | G | T | P | E  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)<decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:  a. No precision is lost  b. No fractional digits will be emitted  c. The exponent (or suffix) is as large as possible.The sign will be omitted unless the number is negative.Examples:  1.5 will be serialized as "1500m"  1.5Gi will be serialized as "1536Mi"Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
 
 <details>
 <summary>Examples with this field (click to open)</summary>
@@ -5772,34 +6109,9 @@ Adds and removes POSIX capabilities from running containers.
 |`add`|`Array< string >`|Added capabilities|
 |`drop`|`Array< string >`|Removed capabilities|
 
-## Initializer
+## FieldsV1
 
-Initializer is information about an initializer that has not yet completed.
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`name`|`string`|name of the process that is responsible for initializing this object.|
-
-## Status
-
-Status is a return value for calls that don't return other objects.
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`apiVersion`|`string`|APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources|
-|`code`|`int32`|Suggested HTTP return code for this status, 0 if not set.|
-|`details`|[`StatusDetails`](#statusdetails)|Extended data associated with the reason.  Each reason may define its own extended details. This field is optional and the data returned is not guaranteed to conform to any schema except that defined by the reason type.|
-|`kind`|`string`|Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds|
-|`message`|`string`|A human-readable description of the status of this operation.|
-|`metadata`|[`ListMeta`](#listmeta)|Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds|
-|`reason`|`string`|A machine-readable description of why this operation is in the "Failure" status. If this value is empty there is no information available. A Reason clarifies an HTTP status code but does not override it.|
-|`status`|`string`|Status of the operation. One of: "Success" or "Failure". More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status|
-
-## Fields
-
-Fields stores a set of fields in a data structure like a Trie. To understand how this is used, see: https://github.com/kubernetes-sigs/structured-merge-diff
+FieldsV1 stores a set of fields in a data structure like a Trie, in JSON format.Each key is either a '.' representing the field itself, and will always map to an empty set, or a string representing a sub-field or item. The string will follow one of these four formats: 'f:<name>', where <name> is the name of a field in a struct, or key in a map 'v:<value>', where <value> is the exact json formatted value of a list item 'i:<index>', where <index> is position of a item in a list 'k:<keys>', where <keys> is a map of  a list item's key fields to their unique values If a key maps to an empty Fields value, the field that key represents is part of the set.The exact format is defined in sigs.k8s.io/structured-merge-diff
 
 ## PreferredSchedulingTerm
 
@@ -5809,7 +6121,7 @@ An empty preferred scheduling term matches all objects with implicit weight 0 (i
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`preference`|[`NodeSelectorTerm`](#nodeselectorterm)|A node selector term, associated with the corresponding weight.|
-|`weight`|`int32`|Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.|
+|`weight`|`integer`|Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.|
 
 ## NodeSelector
 
@@ -5828,7 +6140,7 @@ The weights of all of the matched WeightedPodAffinityTerm fields are added per-n
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`podAffinityTerm`|[`PodAffinityTerm`](#podaffinityterm)|Required. A pod affinity term, associated with the corresponding weight.|
-|`weight`|`int32`|weight associated with matching the corresponding podAffinityTerm, in the range 1-100.|
+|`weight`|`integer`|weight associated with matching the corresponding podAffinityTerm, in the range 1-100.|
 
 ## PodAffinityTerm
 
@@ -5885,7 +6197,7 @@ Maps a string key to a path within a volume.
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`key`|`string`|The key to project.|
-|`mode`|`int32`|Optional: mode bits to use on this file, must be a value between 0 and 0777. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
+|`mode`|`integer`|Optional: mode bits to use on this file, must be a value between 0 and 0777. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
 |`path`|`string`|The relative path of the file to map the key to. May not be an absolute path. May not contain the path element '..'. May not start with the string '..'.|
 
 ## DownwardAPIVolumeFile
@@ -5896,7 +6208,7 @@ DownwardAPIVolumeFile represents information to create the file containing the p
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`fieldRef`|[`ObjectFieldSelector`](#objectfieldselector)|Required: Selects a field of the pod: only annotations, labels, name and namespace are supported.|
-|`mode`|`int32`|Optional: mode bits to use on this file, must be a value between 0 and 0777. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
+|`mode`|`integer`|Optional: mode bits to use on this file, must be a value between 0 and 0777. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.|
 |`path`|`string`|Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the '..' path. Must be utf-8 encoded. The first item of the relative path must not start with '..'|
 |`resourceFieldRef`|[`ResourceFieldSelector`](#resourcefieldselector)|Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.|
 
@@ -5943,303 +6255,6 @@ HTTPHeader describes a custom header to be used in HTTP probes
 |`name`|`string`|The header field name|
 |`value`|`string`|The header field value|
 
-## StatusDetails
-
-StatusDetails is a set of additional properties that MAY be set by the server to provide additional information about a response. The Reason field of a Status object defines what attributes will be set. Clients must ignore fields that do not match the defined type of each attribute, and should assume that any attribute may be empty, invalid, or under defined.
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`causes`|`Array<`[`StatusCause`](#statuscause)`>`|The Causes array includes more details associated with the StatusReason failure. Not all StatusReasons may provide detailed causes.|
-|`group`|`string`|The group attribute of the resource associated with the status StatusReason.|
-|`kind`|`string`|The kind attribute of the resource associated with the status StatusReason. On some operations may differ from the requested resource Kind. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds|
-|`name`|`string`|The name attribute of the resource associated with the status StatusReason (when there is a single name which can be described).|
-|`retryAfterSeconds`|`int32`|If specified, the time in seconds before the operation should be retried. Some errors may indicate the client must take an alternate action - for those errors this field may indicate how long to wait before taking the alternate action.|
-|`uid`|`string`|UID of the resource. (when there is a single resource which can be described). More info: http://kubernetes.io/docs/user-guide/identifiers#uids|
-
-## ListMeta
-
-ListMeta describes metadata that synthetic resources must have, including lists and various status objects. A resource may have only one of {ObjectMeta, ListMeta}.
-
-<details>
-<summary>Examples with this field (click to open)</summary>
-<br>
-
-- [`archive-location.yaml`](https://github.com/argoproj/argo/blob/master/examples/archive-location.yaml)
-
-- [`arguments-artifacts.yaml`](https://github.com/argoproj/argo/blob/master/examples/arguments-artifacts.yaml)
-
-- [`arguments-parameters.yaml`](https://github.com/argoproj/argo/blob/master/examples/arguments-parameters.yaml)
-
-- [`artifact-disable-archive.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-disable-archive.yaml)
-
-- [`artifact-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-passing.yaml)
-
-- [`artifact-path-placeholders.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-path-placeholders.yaml)
-
-- [`artifact-repository-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifact-repository-ref.yaml)
-
-- [`artifactory-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/artifactory-artifact.yaml)
-
-- [`ci-output-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci-output-artifact.yaml)
-
-- [`ci.yaml`](https://github.com/argoproj/argo/blob/master/examples/ci.yaml)
-
-- [`cluster-wftmpl-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/cluster-wftmpl-dag.yaml)
-
-- [`clustertemplates.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/clustertemplates.yaml)
-
-- [`mixed-cluster-namespaced-wftmpl-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/mixed-cluster-namespaced-wftmpl-steps.yaml)
-
-- [`workflow-template-ref-with-entrypoint-arg-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/workflow-template-ref-with-entrypoint-arg-passing.yaml)
-
-- [`workflow-template-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/cluster-workflow-template/workflow-template-ref.yaml)
-
-- [`coinflip-recursive.yaml`](https://github.com/argoproj/argo/blob/master/examples/coinflip-recursive.yaml)
-
-- [`coinflip.yaml`](https://github.com/argoproj/argo/blob/master/examples/coinflip.yaml)
-
-- [`colored-logs.yaml`](https://github.com/argoproj/argo/blob/master/examples/colored-logs.yaml)
-
-- [`conditionals.yaml`](https://github.com/argoproj/argo/blob/master/examples/conditionals.yaml)
-
-- [`continue-on-fail.yaml`](https://github.com/argoproj/argo/blob/master/examples/continue-on-fail.yaml)
-
-- [`cron-backfill.yaml`](https://github.com/argoproj/argo/blob/master/examples/cron-backfill.yaml)
-
-- [`cron-workflow.yaml`](https://github.com/argoproj/argo/blob/master/examples/cron-workflow.yaml)
-
-- [`custom-metrics.yaml`](https://github.com/argoproj/argo/blob/master/examples/custom-metrics.yaml)
-
-- [`daemon-nginx.yaml`](https://github.com/argoproj/argo/blob/master/examples/daemon-nginx.yaml)
-
-- [`daemon-step.yaml`](https://github.com/argoproj/argo/blob/master/examples/daemon-step.yaml)
-
-- [`daemoned-stateful-set-with-service.yaml`](https://github.com/argoproj/argo/blob/master/examples/daemoned-stateful-set-with-service.yaml)
-
-- [`dag-coinflip.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-coinflip.yaml)
-
-- [`dag-continue-on-fail.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-continue-on-fail.yaml)
-
-- [`dag-daemon-task.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-daemon-task.yaml)
-
-- [`dag-diamond-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-diamond-steps.yaml)
-
-- [`dag-diamond.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-diamond.yaml)
-
-- [`dag-disable-failFast.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-disable-failFast.yaml)
-
-- [`dag-enhanced-depends.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-enhanced-depends.yaml)
-
-- [`dag-multiroot.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-multiroot.yaml)
-
-- [`dag-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-nested.yaml)
-
-- [`dag-targets.yaml`](https://github.com/argoproj/argo/blob/master/examples/dag-targets.yaml)
-
-- [`default-pdb-support.yaml`](https://github.com/argoproj/argo/blob/master/examples/default-pdb-support.yaml)
-
-- [`dns-config.yaml`](https://github.com/argoproj/argo/blob/master/examples/dns-config.yaml)
-
-- [`exit-code-output-variable.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-code-output-variable.yaml)
-
-- [`exit-handler-dag-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handler-dag-level.yaml)
-
-- [`exit-handler-step-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handler-step-level.yaml)
-
-- [`exit-handlers.yaml`](https://github.com/argoproj/argo/blob/master/examples/exit-handlers.yaml)
-
-- [`forever.yaml`](https://github.com/argoproj/argo/blob/master/examples/forever.yaml)
-
-- [`fun-with-gifs.yaml`](https://github.com/argoproj/argo/blob/master/examples/fun-with-gifs.yaml)
-
-- [`gc-ttl.yaml`](https://github.com/argoproj/argo/blob/master/examples/gc-ttl.yaml)
-
-- [`global-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/global-outputs.yaml)
-
-- [`global-parameters.yaml`](https://github.com/argoproj/argo/blob/master/examples/global-parameters.yaml)
-
-- [`handle-large-output-results.yaml`](https://github.com/argoproj/argo/blob/master/examples/handle-large-output-results.yaml)
-
-- [`hdfs-artifact.yaml`](https://github.com/argoproj/argo/blob/master/examples/hdfs-artifact.yaml)
-
-- [`hello-hybrid.yaml`](https://github.com/argoproj/argo/blob/master/examples/hello-hybrid.yaml)
-
-- [`hello-windows.yaml`](https://github.com/argoproj/argo/blob/master/examples/hello-windows.yaml)
-
-- [`hello-world.yaml`](https://github.com/argoproj/argo/blob/master/examples/hello-world.yaml)
-
-- [`image-pull-secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/image-pull-secrets.yaml)
-
-- [`influxdb-ci.yaml`](https://github.com/argoproj/argo/blob/master/examples/influxdb-ci.yaml)
-
-- [`init-container.yaml`](https://github.com/argoproj/argo/blob/master/examples/init-container.yaml)
-
-- [`input-artifact-gcs.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-gcs.yaml)
-
-- [`input-artifact-git.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-git.yaml)
-
-- [`input-artifact-http.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-http.yaml)
-
-- [`input-artifact-oss.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-oss.yaml)
-
-- [`input-artifact-raw.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-raw.yaml)
-
-- [`input-artifact-s3.yaml`](https://github.com/argoproj/argo/blob/master/examples/input-artifact-s3.yaml)
-
-- [`k8s-jobs.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-jobs.yaml)
-
-- [`k8s-orchestration.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-orchestration.yaml)
-
-- [`k8s-owner-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-owner-reference.yaml)
-
-- [`k8s-set-owner-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-set-owner-reference.yaml)
-
-- [`k8s-wait-wf.yaml`](https://github.com/argoproj/argo/blob/master/examples/k8s-wait-wf.yaml)
-
-- [`loops-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-dag.yaml)
-
-- [`loops-maps.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-maps.yaml)
-
-- [`loops-param-argument.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-param-argument.yaml)
-
-- [`loops-param-result.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-param-result.yaml)
-
-- [`loops-sequence.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops-sequence.yaml)
-
-- [`loops.yaml`](https://github.com/argoproj/argo/blob/master/examples/loops.yaml)
-
-- [`memoize-simple.yaml`](https://github.com/argoproj/argo/blob/master/examples/memoize-simple.yaml)
-
-- [`nested-workflow.yaml`](https://github.com/argoproj/argo/blob/master/examples/nested-workflow.yaml)
-
-- [`node-selector.yaml`](https://github.com/argoproj/argo/blob/master/examples/node-selector.yaml)
-
-- [`output-artifact-gcs.yaml`](https://github.com/argoproj/argo/blob/master/examples/output-artifact-gcs.yaml)
-
-- [`output-artifact-s3.yaml`](https://github.com/argoproj/argo/blob/master/examples/output-artifact-s3.yaml)
-
-- [`output-parameter.yaml`](https://github.com/argoproj/argo/blob/master/examples/output-parameter.yaml)
-
-- [`parallelism-limit.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-limit.yaml)
-
-- [`parallelism-nested-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-nested-dag.yaml)
-
-- [`parallelism-nested-workflow.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-nested-workflow.yaml)
-
-- [`parallelism-nested.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-nested.yaml)
-
-- [`parallelism-template-limit.yaml`](https://github.com/argoproj/argo/blob/master/examples/parallelism-template-limit.yaml)
-
-- [`parameter-aggregation-dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/parameter-aggregation-dag.yaml)
-
-- [`parameter-aggregation-script.yaml`](https://github.com/argoproj/argo/blob/master/examples/parameter-aggregation-script.yaml)
-
-- [`parameter-aggregation.yaml`](https://github.com/argoproj/argo/blob/master/examples/parameter-aggregation.yaml)
-
-- [`pod-gc-strategy.yaml`](https://github.com/argoproj/argo/blob/master/examples/pod-gc-strategy.yaml)
-
-- [`pod-metadata.yaml`](https://github.com/argoproj/argo/blob/master/examples/pod-metadata.yaml)
-
-- [`pod-spec-from-previous-step.yaml`](https://github.com/argoproj/argo/blob/master/examples/pod-spec-from-previous-step.yaml)
-
-- [`pod-spec-patch-wf-tmpl.yaml`](https://github.com/argoproj/argo/blob/master/examples/pod-spec-patch-wf-tmpl.yaml)
-
-- [`pod-spec-patch.yaml`](https://github.com/argoproj/argo/blob/master/examples/pod-spec-patch.yaml)
-
-- [`pod-spec-yaml-patch.yaml`](https://github.com/argoproj/argo/blob/master/examples/pod-spec-yaml-patch.yaml)
-
-- [`recursive-for-loop.yaml`](https://github.com/argoproj/argo/blob/master/examples/recursive-for-loop.yaml)
-
-- [`resource-delete-with-flags.yaml`](https://github.com/argoproj/argo/blob/master/examples/resource-delete-with-flags.yaml)
-
-- [`resource-flags.yaml`](https://github.com/argoproj/argo/blob/master/examples/resource-flags.yaml)
-
-- [`resubmit.yaml`](https://github.com/argoproj/argo/blob/master/examples/resubmit.yaml)
-
-- [`retry-backoff.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-backoff.yaml)
-
-- [`retry-container-to-completion.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container-to-completion.yaml)
-
-- [`retry-container.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-container.yaml)
-
-- [`retry-on-error.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-on-error.yaml)
-
-- [`retry-script.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-script.yaml)
-
-- [`retry-with-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/retry-with-steps.yaml)
-
-- [`scripts-bash.yaml`](https://github.com/argoproj/argo/blob/master/examples/scripts-bash.yaml)
-
-- [`scripts-javascript.yaml`](https://github.com/argoproj/argo/blob/master/examples/scripts-javascript.yaml)
-
-- [`scripts-python.yaml`](https://github.com/argoproj/argo/blob/master/examples/scripts-python.yaml)
-
-- [`secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/secrets.yaml)
-
-- [`sidecar-dind.yaml`](https://github.com/argoproj/argo/blob/master/examples/sidecar-dind.yaml)
-
-- [`sidecar-nginx.yaml`](https://github.com/argoproj/argo/blob/master/examples/sidecar-nginx.yaml)
-
-- [`sidecar.yaml`](https://github.com/argoproj/argo/blob/master/examples/sidecar.yaml)
-
-- [`status-reference.yaml`](https://github.com/argoproj/argo/blob/master/examples/status-reference.yaml)
-
-- [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/steps.yaml)
-
-- [`suspend-template-outputs.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template-outputs.yaml)
-
-- [`suspend-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/suspend-template.yaml)
-
-- [`synchronization-mutex-tmpl-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/synchronization-mutex-tmpl-level.yaml)
-
-- [`synchronization-mutex-wf-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/synchronization-mutex-wf-level.yaml)
-
-- [`synchronization-tmpl-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/synchronization-tmpl-level.yaml)
-
-- [`synchronization-wf-level.yaml`](https://github.com/argoproj/argo/blob/master/examples/synchronization-wf-level.yaml)
-
-- [`template-on-exit.yaml`](https://github.com/argoproj/argo/blob/master/examples/template-on-exit.yaml)
-
-- [`testvolume.yaml`](https://github.com/argoproj/argo/blob/master/examples/testvolume.yaml)
-
-- [`timeouts-step.yaml`](https://github.com/argoproj/argo/blob/master/examples/timeouts-step.yaml)
-
-- [`timeouts-workflow.yaml`](https://github.com/argoproj/argo/blob/master/examples/timeouts-workflow.yaml)
-
-- [`volumes-emptydir.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-emptydir.yaml)
-
-- [`volumes-existing.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-existing.yaml)
-
-- [`volumes-pvc.yaml`](https://github.com/argoproj/argo/blob/master/examples/volumes-pvc.yaml)
-
-- [`work-avoidance.yaml`](https://github.com/argoproj/argo/blob/master/examples/work-avoidance.yaml)
-
-- [`workflow-of-workflows.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-of-workflows.yaml)
-
-- [`dag.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/dag.yaml)
-
-- [`hello-world.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/hello-world.yaml)
-
-- [`retry-with-steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/retry-with-steps.yaml)
-
-- [`steps.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/steps.yaml)
-
-- [`templates.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/templates.yaml)
-
-- [`workflow-template-ref-with-entrypoint-arg-passing.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/workflow-template-ref-with-entrypoint-arg-passing.yaml)
-
-- [`workflow-template-ref.yaml`](https://github.com/argoproj/argo/blob/master/examples/workflow-template/workflow-template-ref.yaml)
-</details>
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`continue`|`string`|continue may be set if the user set a limit on the number of items returned, and indicates that the server has more data available. The value is opaque and may be used to issue another request to the endpoint that served this list to retrieve the next set of available objects. Continuing a consistent list may not be possible if the server configuration has changed or more than a few minutes have passed. The resourceVersion field returned when using this continue value will be identical to the value in the first response, unless you have received this token from an error message.|
-|`remainingItemCount`|`int64`|remainingItemCount is the number of subsequent items in the list which are not included in this list response. If the list request contained label or field selectors, then the number of remaining items is unknown and the field will be left unset and omitted during serialization. If the list is complete (either because it is not chunking or because this is the last chunk), then there are no more remaining items and this field will be left unset and omitted during serialization. Servers older than v1.15 do not set this field. The intended use of the remainingItemCount is *estimating* the size of a collection. Clients should not rely on the remainingItemCount to be set or to be exact.This field is alpha and can be changed or removed without notice.|
-|`resourceVersion`|`string`|String that identifies the server's internal version of this object that can be used by clients to determine when objects have changed. Value must be treated as opaque by clients and passed unmodified back to the server. Populated by the system. Read-only. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency|
-|`selfLink`|`string`|selfLink is a URL representing this object. Populated by the system. Read-only.|
-
 ## NodeSelectorTerm
 
 A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
@@ -6285,6 +6300,8 @@ Adapts a secret into a projected volume.The contents of the target Secret's Data
 <summary>Examples with this field (click to open)</summary>
 <br>
 
+- [`buildkit-template.yaml`](https://github.com/argoproj/argo/blob/master/examples/buildkit-template.yaml)
+
 - [`secrets.yaml`](https://github.com/argoproj/argo/blob/master/examples/secrets.yaml)
 </details>
 
@@ -6303,19 +6320,8 @@ ServiceAccountTokenProjection represents a projected service account token volum
 | Field Name | Field Type | Description   |
 |:----------:|:----------:|---------------|
 |`audience`|`string`|Audience is the intended audience of the token. A recipient of a token must identify itself with an identifier specified in the audience of the token, and otherwise should reject the token. The audience defaults to the identifier of the apiserver.|
-|`expirationSeconds`|`int64`|ExpirationSeconds is the requested duration of validity of the service account token. As the token approaches expiration, the kubelet volume plugin will proactively rotate the service account token. The kubelet will start trying to rotate the token if the token is older than 80 percent of its time to live or if the token is older than 24 hours.Defaults to 1 hour and must be at least 10 minutes.|
+|`expirationSeconds`|`integer`|ExpirationSeconds is the requested duration of validity of the service account token. As the token approaches expiration, the kubelet volume plugin will proactively rotate the service account token. The kubelet will start trying to rotate the token if the token is older than 80 percent of its time to live or if the token is older than 24 hours.Defaults to 1 hour and must be at least 10 minutes.|
 |`path`|`string`|Path is the path relative to the mount point of the file to project the token into.|
-
-## StatusCause
-
-StatusCause provides more information about an api.Status failure, including cases when multiple errors are encountered.
-
-### Fields
-| Field Name | Field Type | Description   |
-|:----------:|:----------:|---------------|
-|`field`|`string`|The field of the resource that has caused this error, as named by its JSON serialization. May include dot and postfix notation for nested attributes. Arrays are zero-indexed.  Fields may appear more than once in an array of causes due to fields having multiple errors. Optional.Examples:  "name" - the field "name" on the current resource  "items[0].name" - the field "name" on the first array entry in "items"|
-|`message`|`string`|A human-readable description of the cause of the error.  This field may be presented as-is to a reader.|
-|`reason`|`string`|A machine-readable description of the cause of the error. If this value is empty there is no information available.|
 
 ## NodeSelectorRequirement
 

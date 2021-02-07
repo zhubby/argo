@@ -1,6 +1,6 @@
-# Sychronization
+# Synchronization
 
-![alpha](assets/alpha.svg)
+![GA](assets/ga.svg)
 
 > v2.10 and after
 
@@ -14,7 +14,7 @@ from a workflow or template within a workflow.
 For example:
 ```yaml
 apiVersion: v1
- kind: ConfigMap
+kind: ConfigMap
 metadata:
  name: my-config
 data:
