@@ -55,22 +55,28 @@ func TestWorkflowHappenedBetween(t *testing.T) {
 	assert.False(t, WorkflowRanBetween(t0, t3)(Workflow{}))
 	assert.False(t, WorkflowRanBetween(t0, t1)(Workflow{
 		ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: t0}},
-		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t1}}}))
+		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t1}},
+	}))
 	assert.False(t, WorkflowRanBetween(t1, t2)(Workflow{
 		ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: t0}},
-		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t1}}}))
+		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t1}},
+	}))
 	assert.False(t, WorkflowRanBetween(t2, t3)(Workflow{
 		ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: t0}},
-		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t1}}}))
+		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t1}},
+	}))
 	assert.False(t, WorkflowRanBetween(t0, t1)(Workflow{
 		ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: t1}},
-		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t2}}}))
+		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t2}},
+	}))
 	assert.False(t, WorkflowRanBetween(t2, t3)(Workflow{
 		ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: t1}},
-		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t2}}}))
+		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t2}},
+	}))
 	assert.True(t, WorkflowRanBetween(t0, t3)(Workflow{
 		ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Time{Time: t1}},
-		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t2}}}))
+		Status:     WorkflowStatus{FinishedAt: metav1.Time{Time: t2}},
+	}))
 }
 
 func TestArtifactLocation_IsArchiveLogs(t *testing.T) {
@@ -88,7 +94,7 @@ func TestArtifactLocation_HasLocation(t *testing.T) {
 
 func TestArtifactoryArtifact(t *testing.T) {
 	a := &ArtifactoryArtifact{URL: "http://my-host"}
-	assert.True(t, a.HasLocation())
+	assert.False(t, a.HasLocation())
 	assert.NoError(t, a.SetKey("my-key"))
 	key, err := a.GetKey()
 	assert.NoError(t, err)
@@ -356,7 +362,7 @@ func TestNodes_Any(t *testing.T) {
 }
 
 func TestNodes_Children(t *testing.T) {
-	var nodes = Nodes{
+	nodes := Nodes{
 		"node_0": NodeStatus{Name: "node_0", Phase: NodeFailed, Children: []string{"node_1", "node_2"}},
 		"node_1": NodeStatus{Name: "node_1", Phase: NodeFailed, Children: []string{}},
 		"node_2": NodeStatus{Name: "node_2", Phase: NodeRunning, Children: []string{}},
@@ -376,7 +382,7 @@ func TestNodes_Children(t *testing.T) {
 }
 
 func TestNodes_Filter(t *testing.T) {
-	var nodes = Nodes{
+	nodes := Nodes{
 		"node_1": NodeStatus{ID: "node_1", Phase: NodeFailed},
 		"node_2": NodeStatus{ID: "node_2", Phase: NodeRunning},
 		"node_3": NodeStatus{ID: "node_3", Phase: NodeFailed},
@@ -395,9 +401,9 @@ func TestNodes_Filter(t *testing.T) {
 	})
 }
 
-//Map(f func(x NodeStatus) interface{}) map[string]interface{} {
+// Map(f func(x NodeStatus) interface{}) map[string]interface{} {
 func TestNodes_Map(t *testing.T) {
-	var nodes = Nodes{
+	nodes := Nodes{
 		"node_1": NodeStatus{ID: "node_1", HostNodeName: "host_1"},
 		"node_2": NodeStatus{ID: "node_2", HostNodeName: "host_2"},
 	}
@@ -522,17 +528,8 @@ func TestWorkflowSpec_GetVolumeGC(t *testing.T) {
 }
 
 func TestGetTTLStrategy(t *testing.T) {
-
-	spec := WorkflowSpec{TTLSecondsAfterFinished: pointer.Int32Ptr(10)}
+	spec := WorkflowSpec{TTLStrategy: &TTLStrategy{SecondsAfterCompletion: pointer.Int32Ptr(20)}}
 	ttl := spec.GetTTLStrategy()
-	assert.Equal(t, int32(10), *ttl.SecondsAfterCompletion)
-
-	spec = WorkflowSpec{TTLSecondsAfterFinished: pointer.Int32Ptr(10), TTLStrategy: &TTLStrategy{SecondsAfterCompletion: pointer.Int32Ptr(20)}}
-	ttl = spec.GetTTLStrategy()
-	assert.Equal(t, int32(20), *ttl.SecondsAfterCompletion)
-
-	spec = WorkflowSpec{TTLStrategy: &TTLStrategy{SecondsAfterCompletion: pointer.Int32Ptr(20)}}
-	ttl = spec.GetTTLStrategy()
 	assert.Equal(t, int32(20), *ttl.SecondsAfterCompletion)
 }
 
@@ -618,4 +615,278 @@ func TestWorkflow_GetSemaphoreKeys(t *testing.T) {
 	assert.Contains(keys, "test/test")
 	assert.Contains(keys, "test/template")
 	assert.Contains(keys, "test/template1")
+}
+
+func TestTemplate_IsMainContainerNamed(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		x := &Template{}
+		assert.True(t, x.IsMainContainerName("main"))
+	})
+	t.Run("ContainerSet", func(t *testing.T) {
+		x := &Template{ContainerSet: &ContainerSetTemplate{Containers: []ContainerNode{{Container: corev1.Container{Name: "foo"}}}}}
+		assert.False(t, x.IsMainContainerName("main"))
+		assert.True(t, x.IsMainContainerName("foo"))
+	})
+}
+
+func TestTemplate_GetMainContainer(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		x := &Template{}
+		assert.Equal(t, []string{"main"}, x.GetMainContainerNames())
+	})
+	t.Run("ContainerSet", func(t *testing.T) {
+		x := &Template{ContainerSet: &ContainerSetTemplate{Containers: []ContainerNode{{Container: corev1.Container{Name: "foo"}}}}}
+		assert.Equal(t, []string{"foo"}, x.GetMainContainerNames())
+	})
+}
+
+func TestTemplate_HasSequencedContainers(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		x := &Template{}
+		assert.False(t, x.HasSequencedContainers())
+	})
+	t.Run("ContainerSet", func(t *testing.T) {
+		x := &Template{ContainerSet: &ContainerSetTemplate{Containers: []ContainerNode{{Dependencies: []string{""}}}}}
+		assert.True(t, x.HasSequencedContainers())
+	})
+}
+
+func TestTemplate_GetVolumeMounts(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		x := &Template{}
+		assert.Empty(t, x.GetVolumeMounts())
+	})
+	t.Run("Container", func(t *testing.T) {
+		x := &Template{Container: &corev1.Container{VolumeMounts: []corev1.VolumeMount{{}}}}
+		assert.NotEmpty(t, x.GetVolumeMounts())
+	})
+	t.Run("ContainerSet", func(t *testing.T) {
+		x := &Template{ContainerSet: &ContainerSetTemplate{VolumeMounts: []corev1.VolumeMount{{}}}}
+		assert.NotEmpty(t, x.GetVolumeMounts())
+	})
+	t.Run("Script", func(t *testing.T) {
+		x := &Template{Script: &ScriptTemplate{Container: corev1.Container{VolumeMounts: []corev1.VolumeMount{{}}}}}
+		assert.NotEmpty(t, x.GetVolumeMounts())
+	})
+}
+
+func TestTemplate_HasOutputs(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		x := &Template{}
+		assert.False(t, x.HasOutput())
+	})
+	t.Run("Container", func(t *testing.T) {
+		x := &Template{Container: &corev1.Container{}}
+		assert.True(t, x.HasOutput())
+	})
+	t.Run("ContainerSet", func(t *testing.T) {
+		t.Run("NoMain", func(t *testing.T) {
+			x := &Template{ContainerSet: &ContainerSetTemplate{}}
+			assert.False(t, x.HasOutput())
+		})
+		t.Run("Main", func(t *testing.T) {
+			x := &Template{ContainerSet: &ContainerSetTemplate{Containers: []ContainerNode{{Container: corev1.Container{Name: "main"}}}}}
+			assert.True(t, x.HasOutput())
+		})
+	})
+	t.Run("Script", func(t *testing.T) {
+		x := &Template{Script: &ScriptTemplate{}}
+		assert.True(t, x.HasOutput())
+	})
+	t.Run("Data", func(t *testing.T) {
+		x := &Template{Data: &Data{}}
+		assert.True(t, x.HasOutput())
+	})
+	t.Run("Resource", func(t *testing.T) {
+		x := &Template{Resource: &ResourceTemplate{}}
+		assert.False(t, x.HasOutput())
+	})
+}
+
+func TestTemplate_SaveLogsAsArtifact(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		x := &Template{}
+		assert.False(t, x.SaveLogsAsArtifact())
+	})
+	t.Run("IsArchiveLogs", func(t *testing.T) {
+		x := &Template{ArchiveLocation: &ArtifactLocation{ArchiveLogs: pointer.BoolPtr(true)}}
+		assert.True(t, x.SaveLogsAsArtifact())
+	})
+	t.Run("ContainerSet", func(t *testing.T) {
+		t.Run("NoMain", func(t *testing.T) {
+			x := &Template{ArchiveLocation: &ArtifactLocation{ArchiveLogs: pointer.BoolPtr(true)}, ContainerSet: &ContainerSetTemplate{}}
+			assert.False(t, x.SaveLogsAsArtifact())
+		})
+		t.Run("Main", func(t *testing.T) {
+			x := &Template{ArchiveLocation: &ArtifactLocation{ArchiveLogs: pointer.BoolPtr(true)}, ContainerSet: &ContainerSetTemplate{Containers: []ContainerNode{{Container: corev1.Container{Name: "main"}}}}}
+			assert.True(t, x.SaveLogsAsArtifact())
+		})
+	})
+}
+
+func TestTemplate_ExcludeTemplateTypes(t *testing.T) {
+	steps := ParallelSteps{
+		[]WorkflowStep{
+			{
+				Name:     "Test",
+				Template: "testtmpl",
+			},
+		},
+	}
+	tmpl := Template{
+		Name:      "step",
+		Steps:     []ParallelSteps{steps},
+		Script:    &ScriptTemplate{Source: "test"},
+		Container: &corev1.Container{Name: "container"},
+		DAG:       &DAGTemplate{FailFast: pointer.BoolPtr(true)},
+		Resource:  &ResourceTemplate{Action: "Create"},
+		Data:      &Data{Source: DataSource{ArtifactPaths: &ArtifactPaths{}}},
+		Suspend:   &SuspendTemplate{Duration: "10s"},
+	}
+
+	t.Run("StepTemplateType", func(t *testing.T) {
+		stepTmpl := tmpl.DeepCopy()
+		stepTmpl.SetType(TemplateTypeSteps)
+		assert.NotNil(t, stepTmpl.Steps)
+		assert.Nil(t, stepTmpl.Script)
+		assert.Nil(t, stepTmpl.Resource)
+		assert.Nil(t, stepTmpl.Data)
+		assert.Nil(t, stepTmpl.DAG)
+		assert.Nil(t, stepTmpl.Container)
+		assert.Nil(t, stepTmpl.Suspend)
+	})
+
+	t.Run("DAGTemplateType", func(t *testing.T) {
+		dagTmpl := tmpl.DeepCopy()
+		dagTmpl.SetType(TemplateTypeDAG)
+		assert.NotNil(t, dagTmpl.DAG)
+		assert.Nil(t, dagTmpl.Script)
+		assert.Nil(t, dagTmpl.Resource)
+		assert.Nil(t, dagTmpl.Data)
+		assert.Len(t, dagTmpl.Steps, 0)
+		assert.Nil(t, dagTmpl.Container)
+		assert.Nil(t, dagTmpl.Suspend)
+	})
+
+	t.Run("ScriptTemplateType", func(t *testing.T) {
+		scriptTmpl := tmpl.DeepCopy()
+		scriptTmpl.SetType(TemplateTypeScript)
+		assert.NotNil(t, scriptTmpl.Script)
+		assert.Nil(t, scriptTmpl.DAG)
+		assert.Nil(t, scriptTmpl.Resource)
+		assert.Nil(t, scriptTmpl.Data)
+		assert.Len(t, scriptTmpl.Steps, 0)
+		assert.Nil(t, scriptTmpl.Container)
+		assert.Nil(t, scriptTmpl.Suspend)
+	})
+
+	t.Run("ResourceTemplateType", func(t *testing.T) {
+		resourceTmpl := tmpl.DeepCopy()
+		resourceTmpl.SetType(TemplateTypeResource)
+		assert.NotNil(t, resourceTmpl.Resource)
+		assert.Nil(t, resourceTmpl.Script)
+		assert.Nil(t, resourceTmpl.DAG)
+		assert.Nil(t, resourceTmpl.Data)
+		assert.Len(t, resourceTmpl.Steps, 0)
+		assert.Nil(t, resourceTmpl.Container)
+		assert.Nil(t, resourceTmpl.Suspend)
+	})
+	t.Run("ContainerTemplateType", func(t *testing.T) {
+		containerTmpl := tmpl.DeepCopy()
+		containerTmpl.SetType(TemplateTypeContainer)
+		assert.NotNil(t, containerTmpl.Container)
+		assert.Nil(t, containerTmpl.Script)
+		assert.Nil(t, containerTmpl.DAG)
+		assert.Nil(t, containerTmpl.Data)
+		assert.Len(t, containerTmpl.Steps, 0)
+		assert.Nil(t, containerTmpl.Resource)
+		assert.Nil(t, containerTmpl.Suspend)
+	})
+	t.Run("DataTemplateType", func(t *testing.T) {
+		dataTmpl := tmpl.DeepCopy()
+		dataTmpl.SetType(TemplateTypeData)
+		assert.NotNil(t, dataTmpl.Data)
+		assert.Nil(t, dataTmpl.Script)
+		assert.Nil(t, dataTmpl.DAG)
+		assert.Nil(t, dataTmpl.Container)
+		assert.Len(t, dataTmpl.Steps, 0)
+		assert.Nil(t, dataTmpl.Resource)
+		assert.Nil(t, dataTmpl.Suspend)
+	})
+	t.Run("SuspendTemplateType", func(t *testing.T) {
+		suspendTmpl := tmpl.DeepCopy()
+		suspendTmpl.SetType(TemplateTypeSuspend)
+		assert.NotNil(t, suspendTmpl.Suspend)
+		assert.Nil(t, suspendTmpl.Script)
+		assert.Nil(t, suspendTmpl.DAG)
+		assert.Nil(t, suspendTmpl.Container)
+		assert.Len(t, suspendTmpl.Steps, 0)
+		assert.Nil(t, suspendTmpl.Resource)
+		assert.Nil(t, suspendTmpl.Data)
+	})
+}
+
+func TestDAGTask_GetExitTemplate(t *testing.T) {
+	args := Arguments{
+		Parameters: []Parameter{
+			{
+				Name:  "test",
+				Value: AnyStringPtr("welcome"),
+			},
+		},
+	}
+	task := DAGTask{
+		Hooks: map[LifecycleEvent]LifecycleHook{
+			ExitLifecycleEvent: LifecycleHook{
+				Template:  "test",
+				Arguments: args,
+			},
+		},
+	}
+	existTmpl := task.GetExitHook(Arguments{})
+	assert.NotNil(t, existTmpl)
+	assert.Equal(t, "test", existTmpl.Template)
+	assert.Equal(t, args, existTmpl.Arguments)
+	task = DAGTask{OnExit: "test-tmpl"}
+	existTmpl = task.GetExitHook(args)
+	assert.NotNil(t, existTmpl)
+	assert.Equal(t, "test-tmpl", existTmpl.Template)
+	assert.Equal(t, args, existTmpl.Arguments)
+}
+
+func TestStep_GetExitTemplate(t *testing.T) {
+	args := Arguments{
+		Parameters: []Parameter{
+			{
+				Name:  "test",
+				Value: AnyStringPtr("welcome"),
+			},
+		},
+	}
+	task := WorkflowStep{
+		Hooks: map[LifecycleEvent]LifecycleHook{
+			ExitLifecycleEvent: LifecycleHook{
+				Template:  "test",
+				Arguments: args,
+			},
+		},
+	}
+	existTmpl := task.GetExitHook(Arguments{})
+	assert.NotNil(t, existTmpl)
+	assert.Equal(t, "test", existTmpl.Template)
+	assert.Equal(t, args, existTmpl.Arguments)
+	task = WorkflowStep{OnExit: "test-tmpl"}
+	existTmpl = task.GetExitHook(args)
+	assert.NotNil(t, existTmpl)
+	assert.Equal(t, "test-tmpl", existTmpl.Template)
+	assert.Equal(t, args, existTmpl.Arguments)
+}
+
+func TestHasChild(t *testing.T) {
+	node := NodeStatus{
+		Children: []string{"a", "b"},
+	}
+	assert.True(t, node.HasChild("a"))
+	assert.False(t, node.HasChild("c"))
+	assert.False(t, node.HasChild(""))
 }

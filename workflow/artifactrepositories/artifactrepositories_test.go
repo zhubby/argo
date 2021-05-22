@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/argoproj/argo/v3/config"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/config"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 )
 
 func TestArtifactRepositories(t *testing.T) {
@@ -90,6 +90,22 @@ func TestArtifactRepositories(t *testing.T) {
 			assert.Equal(t, "artifact-repositories", ref.ConfigMap)
 			assert.Equal(t, "default-v1", ref.Key)
 			assert.False(t, ref.Default)
+		}
+		err = k.CoreV1().ConfigMaps("my-wf-ns").Delete(ctx, "artifact-repositories", metav1.DeleteOptions{})
+		assert.NoError(t, err)
+	})
+	t.Run("DefaultWithNamespace", func(t *testing.T) {
+		ctx := context.Background()
+		_, err := k.CoreV1().ConfigMaps("my-wf-ns").Create(ctx, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "artifact-repositories",
+			},
+		}, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		ref, err := i.Resolve(ctx, nil, "my-wf-ns")
+		if assert.NoError(t, err) {
+			assert.Equal(t, wfv1.DefaultArtifactRepositoryRefStatus, ref)
 		}
 		err = k.CoreV1().ConfigMaps("my-wf-ns").Delete(ctx, "artifact-repositories", metav1.DeleteOptions{})
 		assert.NoError(t, err)

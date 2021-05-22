@@ -37,7 +37,11 @@ export const WorkflowLogsViewer = ({workflow, nodeId, container, archived}: Work
             .map(e => (!podName ? e.podName + ': ' : '') + e.content + '\n')
             .publishReplay()
             .refCount();
-        const subscription = source.subscribe(() => setLoaded(true), setError);
+        const subscription = source.subscribe(
+            () => setLoaded(true),
+            setError,
+            () => setLoaded(true)
+        );
         setLogsObservable(source);
         return () => subscription.unsubscribe();
     }, [workflow.metadata.namespace, workflow.metadata.name, podName, selectedContainer, archived]);
@@ -48,7 +52,16 @@ export const WorkflowLogsViewer = ({workflow, nodeId, container, archived}: Work
             .map(x => ({value: x.id, label: (x.displayName || x.name) + ' (' + x.id + ')'}))
     );
 
-    const containers = ['main', 'init', 'wait'];
+    const node = workflow.status.nodes[nodeId];
+    const templates = execSpec(workflow).templates.filter(t => !node || t.name === node.templateName);
+
+    const containers = ['init', 'wait'].concat(
+        templates
+            .map(t => ((t.containerSet && t.containerSet.containers) || [{name: 'main'}]).concat(t.sidecars || []))
+            .reduce((a, v) => a.concat(v), [])
+            .map(c => c.name)
+    );
+
     return (
         <div className='workflow-logs-viewer'>
             <h3>Logs</h3>
@@ -57,11 +70,11 @@ export const WorkflowLogsViewer = ({workflow, nodeId, container, archived}: Work
                     <i className='fa fa-exclamation-triangle' /> Logs for archived workflows may be overwritten by a more recent workflow with the same name.
                 </p>
             )}
-            <p>
+            <div>
                 <i className='fa fa-box' />{' '}
                 <Autocomplete items={podNameOptions} value={(podNameOptions.find(x => x.value === podName) || {}).label} onSelect={(_, item) => setPodName(item.value)} /> /{' '}
                 <Autocomplete items={containers} value={selectedContainer} onSelect={setContainer} />
-            </p>
+            </div>
             <ErrorNotice error={error} />
             {selectedContainer === 'init' && (
                 <p>
@@ -94,6 +107,8 @@ export const WorkflowLogsViewer = ({workflow, nodeId, container, archived}: Work
                         <a href={services.workflows.getArtifactLogsUrl(workflow, podName, selectedContainer, archived)}>logs from the artifacts</a>.
                     </>
                 )}
+            </p>
+            <p>
                 {execSpec(workflow).podGC && (
                     <>
                         <WarningIcon /> You pod GC settings will delete pods and their logs immediately on completion.
@@ -107,6 +122,7 @@ export const WorkflowLogsViewer = ({workflow, nodeId, container, archived}: Work
                                 namespace: workflow.metadata.namespace,
                                 name: podName
                             },
+                            workflow,
                             status: {
                                 startedAt: workflow.status.startedAt,
                                 finishedAt: workflow.status.finishedAt

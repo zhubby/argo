@@ -18,7 +18,7 @@ export const FilterDropDown = (props: FilterDropDownProps) => {
         <DropDown
             isMenu={true}
             anchor={() => (
-                <div className={classNames('top-bar__filter', {'top-bar__filter--selected': true})} title='Filter'>
+                <div className={classNames('top-bar__filter')} title='Filter'>
                     <i className='argo-icon-filter' aria-hidden='true' />
                     <i className='fa fa-angle-down' aria-hidden='true' />
                 </div>
@@ -28,13 +28,13 @@ export const FilterDropDown = (props: FilterDropDownProps) => {
                     .filter(item => item.values)
                     .map((item, i) => (
                         <div key={i}>
-                            <li className={classNames('top-bar__filter-item', {title: true})}>
+                            <li key={i} className={classNames('top-bar__filter-item', {title: true})}>
                                 <span>{item.title}</span>
                             </li>
                             {Object.entries(item.values)
                                 .sort()
                                 .map(([label, checked]) => (
-                                    <li className={classNames('top-bar__filter-item')}>
+                                    <li key={label} className={classNames('top-bar__filter-item')}>
                                         <React.Fragment>
                                             <Checkbox id={`filter__${label}`} checked={checked} onChange={v => item.onChange(label, v)} />
                                             <label htmlFor={`filter__${label}`}>{label}</label>

@@ -5,13 +5,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/test/util"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 )
 
 func TestUpdater(t *testing.T) {
 	wf := &wfv1.Workflow{}
-	util.MustUnmarshallYAML(`
+	wfv1.MustUnmarshal(`
 status:
   nodes:
     root:

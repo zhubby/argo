@@ -10,10 +10,15 @@ import (
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/test/e2e/fixtures"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/test/e2e/fixtures"
 )
 
+const kill2xDuration = 70 * time.Second
+
+// Tests the use of signals to kill containers.
+// argoproj/argosay:v2 does not contain sh, so you must use argoproj/argosay:v1.
+// Killing often requires SIGKILL, which is issued 30s after SIGTERM. So tests need longer (>30s) timeout.
 type SignalsSuite struct {
 	fixtures.E2ESuite
 }
@@ -29,18 +34,18 @@ func (s *SignalsSuite) TestStopBehavior() {
 		Workflow("@functional/stop-terminate.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow(fixtures.ToStart, "to start").
+		WaitForWorkflow(fixtures.ToHaveRunningPod, kill2xDuration).
 		RunCli([]string{"stop", "@latest"}, func(t *testing.T, output string, err error) {
 			assert.NoError(t, err)
 			assert.Regexp(t, "workflow stop-terminate-.* stopped", output)
 		}).
-		WaitForWorkflow().
+		WaitForWorkflow(kill2xDuration).
 		Then().
 		ExpectWorkflow(func(t *testing.T, m *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowFailed, status.Phase)
+			assert.Contains(t, []wfv1.WorkflowPhase{wfv1.WorkflowFailed, wfv1.WorkflowError}, status.Phase)
 			nodeStatus := status.Nodes.FindByDisplayName("A")
 			if assert.NotNil(t, nodeStatus) {
-				assert.Equal(t, wfv1.NodeFailed, nodeStatus.Phase)
+				assert.Contains(t, []wfv1.NodePhase{wfv1.NodeFailed, wfv1.NodeError}, nodeStatus.Phase)
 			}
 			nodeStatus = status.Nodes.FindByDisplayName("A.onExit")
 			if assert.NotNil(t, nodeStatus) {
@@ -58,18 +63,18 @@ func (s *SignalsSuite) TestTerminateBehavior() {
 		Workflow("@functional/stop-terminate.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow(fixtures.ToStart, "to start").
+		WaitForWorkflow(fixtures.ToHaveRunningPod, kill2xDuration).
 		RunCli([]string{"terminate", "@latest"}, func(t *testing.T, output string, err error) {
 			assert.NoError(t, err)
 			assert.Regexp(t, "workflow stop-terminate-.* terminated", output)
 		}).
-		WaitForWorkflow().
+		WaitForWorkflow(kill2xDuration).
 		Then().
 		ExpectWorkflow(func(t *testing.T, m *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowFailed, status.Phase)
+			assert.Contains(t, []wfv1.WorkflowPhase{wfv1.WorkflowFailed, wfv1.WorkflowError}, status.Phase)
 			nodeStatus := status.Nodes.FindByDisplayName("A")
 			if assert.NotNil(t, nodeStatus) {
-				assert.Equal(t, wfv1.NodeFailed, nodeStatus.Phase)
+				assert.Contains(t, []wfv1.NodePhase{wfv1.NodeFailed, wfv1.NodeError}, nodeStatus.Phase)
 			}
 			nodeStatus = status.Nodes.FindByDisplayName("A.onExit")
 			assert.Nil(t, nodeStatus)
@@ -78,43 +83,27 @@ func (s *SignalsSuite) TestTerminateBehavior() {
 		})
 }
 
-func (s *SignalsSuite) TestPropagateMaxDuration() {
-	s.Need(fixtures.None(fixtures.PNS)) // does not work on PNS on CI for some reason
+// Tests that new pods are never created once a stop shutdown strategy has been added
+func (s *SignalsSuite) TestDoNotCreatePodsUnderStopBehavior() {
 	s.Given().
-		Workflow(`
-apiVersion: argoproj.io/v1alpha1
-kind: Workflow
-metadata:
-  name: retry-backoff-2
-  labels:
-    argo-e2e: true
-spec:
-  entrypoint: retry-backoff
-  templates:
-  - name: retry-backoff
-    retryStrategy:
-      limit: 10
-      backoff:
-        duration: "1"
-        factor: 1
-        maxDuration: "10"
-    container:
-      image: argoproj/argosay:v1
-      command: [sh, -c]
-      args: ["sleep $(( {{retries}} * 40 )); exit 1"]
-
-`).
+		Workflow("@functional/stop-terminate-2.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow(45 * time.Second).
+		WaitForWorkflow(fixtures.ToHaveRunningPod).
+		RunCli([]string{"stop", "@latest"}, func(t *testing.T, output string, err error) {
+			assert.NoError(t, err)
+			assert.Regexp(t, "workflow stop-terminate-.* stopped", output)
+		}).
+		WaitForWorkflow(kill2xDuration).
 		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
+		ExpectWorkflow(func(t *testing.T, m *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
 			assert.Equal(t, wfv1.WorkflowFailed, status.Phase)
-			assert.Len(t, status.Nodes, 3)
-			node := status.Nodes.FindByDisplayName("retry-backoff-2(1)")
-			if assert.NotNil(t, node) {
-				assert.Equal(t, wfv1.NodeFailed, node.Phase)
+			nodeStatus := status.Nodes.FindByDisplayName("A")
+			if assert.NotNil(t, nodeStatus) {
+				assert.Equal(t, wfv1.NodeFailed, nodeStatus.Phase)
 			}
+			nodeStatus = status.Nodes.FindByDisplayName("B")
+			assert.Nil(t, nodeStatus)
 		})
 }
 
@@ -123,11 +112,16 @@ func (s *SignalsSuite) TestSidecars() {
 		Workflow("@testdata/sidecar-workflow.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded, kill2xDuration)
+}
+
+// make sure Istio/Anthos and other sidecar injectors will work
+func (s *SignalsSuite) TestInjectedSidecar() {
+	s.Given().
+		Workflow("@testdata/sidecar-injected-workflow.yaml").
+		When().
+		SubmitWorkflow().
+		WaitForWorkflow(fixtures.ToBeSucceeded, kill2xDuration)
 }
 
 func TestSignalsSuite(t *testing.T) {

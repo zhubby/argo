@@ -10,10 +10,11 @@ import (
 	"gopkg.in/jcmturner/gokrb5.v5/credentials"
 	"gopkg.in/jcmturner/gokrb5.v5/keytab"
 
-	"github.com/argoproj/argo/v3/errors"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/util"
-	"github.com/argoproj/argo/v3/workflow/artifacts/resource"
+	"github.com/argoproj/argo-workflows/v3/errors"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/util"
+	"github.com/argoproj/argo-workflows/v3/workflow/artifacts/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/artifacts/resource"
 )
 
 // ArtifactDriver is a driver for HDFS
@@ -24,6 +25,8 @@ type ArtifactDriver struct {
 	HDFSUser   string
 	KrbOptions *KrbOptions
 }
+
+var _ common.ArtifactDriver = &ArtifactDriver{}
 
 // KrbOptions is options for Kerberos
 type KrbOptions struct {
@@ -156,7 +159,7 @@ func (driver *ArtifactDriver) Load(_ *wfv1.Artifact, path string) error {
 		dirPath := filepath.Dir(driver.Path)
 		if dirPath != "." && dirPath != "/" {
 			// Follow umask for the permission
-			err = os.MkdirAll(dirPath, 0777)
+			err = os.MkdirAll(dirPath, 0o777)
 			if err != nil {
 				return err
 			}
@@ -205,7 +208,7 @@ func (driver *ArtifactDriver) Save(path string, outputArtifact *wfv1.Artifact) e
 		dirPath := filepath.Dir(driver.Path)
 		if dirPath != "." && dirPath != "/" {
 			// Follow umask for the permission
-			err = hdfscli.MkdirAll(dirPath, 0777)
+			err = hdfscli.MkdirAll(dirPath, 0o777)
 			if err != nil {
 				return err
 			}
@@ -220,4 +223,8 @@ func (driver *ArtifactDriver) Save(path string, outputArtifact *wfv1.Artifact) e
 	}
 
 	return hdfscli.CopyToRemote(path, driver.Path)
+}
+
+func (driver *ArtifactDriver) ListObjects(artifact *wfv1.Artifact) ([]string, error) {
+	return nil, fmt.Errorf("ListObjects is currently not supported for this artifact type, but it will be in a future version")
 }

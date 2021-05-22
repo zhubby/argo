@@ -14,16 +14,20 @@ import (
 	"github.com/argoproj/pkg/stats"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	runtimeutil "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 
 	// load authentication plugin for obtaining credentials from cloud providers.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	wfclientset "github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
-	cmdutil "github.com/argoproj/argo/v3/util/cmd"
-	"github.com/argoproj/argo/v3/workflow/controller"
-	"github.com/argoproj/argo/v3/workflow/metrics"
+	"github.com/argoproj/argo-workflows/v3"
+	wfclientset "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
+	cmdutil "github.com/argoproj/argo-workflows/v3/util/cmd"
+	"github.com/argoproj/argo-workflows/v3/util/logs"
+	"github.com/argoproj/argo-workflows/v3/workflow/controller"
+	"github.com/argoproj/argo-workflows/v3/workflow/metrics"
 )
 
 const (
@@ -41,6 +45,7 @@ func NewRootCommand() *cobra.Command {
 		containerRuntimeExecutor string
 		logLevel                 string // --loglevel
 		glogLevel                int    // --gloglevel
+		logFormat                string // --log-format
 		workflowWorkers          int    // --workflow-workers
 		workflowTTLWorkers       int    // --workflow-ttl-workers
 		podWorkers               int    // --pod-workers
@@ -49,14 +54,18 @@ func NewRootCommand() *cobra.Command {
 		qps                      float32
 		namespaced               bool   // --namespaced
 		managedNamespace         string // --managed-namespace
+
 	)
 
-	var command = cobra.Command{
+	command := cobra.Command{
 		Use:   CLIName,
 		Short: "workflow-controller is the controller to operate on workflows",
 		RunE: func(c *cobra.Command, args []string) error {
+			defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
+
 			cli.SetLogLevel(logLevel)
 			cmdutil.SetGLogLevel(glogLevel)
+			cmdutil.SetLogFormatter(logFormat)
 			stats.RegisterStackDumper()
 			stats.StartStatsTicker(5 * time.Minute)
 
@@ -64,9 +73,12 @@ func NewRootCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			version := argo.GetVersion()
+			config = restclient.AddUserAgent(config, fmt.Sprintf("argo-workflows/%s argo-controller", version.Version))
 			config.Burst = burst
 			config.QPS = qps
 
+			logs.AddK8SLogTransportWrapper(config)
 			metrics.AddMetricsTransportWrapper(config)
 
 			namespace, _, err := clientConfig.Namespace()
@@ -111,6 +123,7 @@ func NewRootCommand() *cobra.Command {
 	command.Flags().StringVar(&containerRuntimeExecutor, "container-runtime-executor", "", "Container runtime executor to use (overrides value in configmap)")
 	command.Flags().StringVar(&logLevel, "loglevel", "info", "Set the logging level. One of: debug|info|warn|error")
 	command.Flags().IntVar(&glogLevel, "gloglevel", 0, "Set the glog logging level")
+	command.Flags().StringVar(&logFormat, "log-format", "text", "The formatter to use for logs. One of: text|json")
 	command.Flags().IntVar(&workflowWorkers, "workflow-workers", 32, "Number of workflow workers")
 	command.Flags().IntVar(&workflowTTLWorkers, "workflow-ttl-workers", 4, "Number of workflow TTL workers")
 	command.Flags().IntVar(&podWorkers, "pod-workers", 32, "Number of pod workers")

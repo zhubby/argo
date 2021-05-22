@@ -8,8 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/workflow/common"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
 )
 
 var EmptyConfigFunc = func() interface{} { return &Config{} }
@@ -43,6 +43,8 @@ type Config struct {
 
 	// ContainerRuntimeExecutor specifies the container runtime interface to use, default is docker
 	ContainerRuntimeExecutor string `json:"containerRuntimeExecutor,omitempty"`
+
+	ContainerRuntimeExecutors ContainerRuntimeExecutors `json:"containerRuntimeExecutors,omitempty"`
 
 	// KubeletPort is needed when using the kubelet containerRuntimeExecutor, default to 10250
 	KubeletPort int `json:"kubeletPort,omitempty"`
@@ -92,11 +94,32 @@ type Config struct {
 	// PodSpecLogStrategy enables the logging of podspec on controller log.
 	PodSpecLogStrategy PodSpecLogStrategy `json:"podSpecLogStrategy,omitempty"`
 
+	// PodGCGracePeriodSeconds specifies the duration in seconds before the pods in the GC queue get deleted.
+	// Value must be non-negative integer. A zero value indicates that the pods will be deleted immediately
+	// as soon as they arrived in the pod GC queue.
+	// Defaults to 30 seconds.
+	PodGCGracePeriodSeconds *int64 `json:"podGCGracePeriodSeconds,omitempty"`
+
 	// WorkflowRestrictions restricts the controller to executing Workflows that meet certain restrictions
 	WorkflowRestrictions *WorkflowRestrictions `json:"workflowRestrictions,omitempty"`
 
-	//Adding configurable initial delay (for K8S clusters with mutating webhooks) to prevent workflow getting modified by MWC.
+	// Adding configurable initial delay (for K8S clusters with mutating webhooks) to prevent workflow getting modified by MWC.
 	InitialDelay metav1.Duration `json:"initialDelay,omitempty"`
+
+	// The command/args for each image, needed when the command is not specified and the emissary executor is used.
+	// https://argoproj.github.io/argo-workflows/workflow-executors/#emissary-emissary
+	Images map[string]Image `json:"images,omitempty"`
+}
+
+func (c Config) GetContainerRuntimeExecutor(labels labels.Labels) (string, error) {
+	name, err := c.ContainerRuntimeExecutors.Select(labels)
+	if err != nil {
+		return "", err
+	}
+	if name != "" {
+		return name, nil
+	}
+	return c.ContainerRuntimeExecutor, nil
 }
 
 // PodSpecLogStrategy contains the configuration for logging the pod spec in controller log for debugging purpose
@@ -342,7 +365,7 @@ type MetricsConfig struct {
 }
 
 type WorkflowRestrictions struct {
-	TemplateReferencing TemplateReferencing `json:"templateReferencing"`
+	TemplateReferencing TemplateReferencing `json:"templateReferencing,omitempty"`
 }
 
 type TemplateReferencing string

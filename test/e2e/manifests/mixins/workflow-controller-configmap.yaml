@@ -3,14 +3,15 @@ kind: ConfigMap
 metadata:
   name: workflow-controller-configmap
 data:
-  containerRuntimeExecutor: pns
   workflowDefaults: |
     spec:
       activeDeadlineSeconds: 300
       ttlStrategy:
         secondsAfterCompletion: 600
+      podSpecPatch: |
+        terminationGracePeriodSeconds: 3
   executor: |
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: Never
     resources:
       requests:
         cpu: 0.1

@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/Knetic/govaluate"
-	"github.com/valyala/fasttemplate"
 
-	"github.com/argoproj/argo/v3/errors"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/workflow/common"
-	"github.com/argoproj/argo/v3/workflow/templateresolution"
+	"github.com/argoproj/argo-workflows/v3/errors"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/util/template"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/templateresolution"
 )
 
 // stepsContext holds context information about this context's steps
@@ -48,11 +48,8 @@ func (woc *wfOperationCtx) executeSteps(ctx context.Context, nodeName string, tm
 	stepTemplateScope := tmplCtx.GetTemplateScope()
 
 	stepsCtx := stepsContext{
-		boundaryID: node.ID,
-		scope: &wfScope{
-			tmpl:  tmpl,
-			scope: make(map[string]interface{}),
-		},
+		boundaryID:     node.ID,
+		scope:          createScope(tmpl),
 		tmplCtx:        tmplCtx,
 		onExitTemplate: opts.onExitTemplate,
 	}
@@ -63,7 +60,7 @@ func (woc *wfOperationCtx) executeSteps(ctx context.Context, nodeName string, tm
 		{
 			sgNode := woc.wf.GetNodeByName(sgNodeName)
 			if sgNode == nil {
-				_ = woc.initializeNode(sgNodeName, wfv1.NodeTypeStepGroup, stepTemplateScope, tmpl, stepsCtx.boundaryID, wfv1.NodeRunning)
+				_ = woc.initializeNode(sgNodeName, wfv1.NodeTypeStepGroup, stepTemplateScope, &wfv1.WorkflowStep{}, stepsCtx.boundaryID, wfv1.NodeRunning)
 			} else if !sgNode.Fulfilled() {
 				_ = woc.markNodePhase(sgNodeName, wfv1.NodeRunning)
 			}
@@ -94,11 +91,7 @@ func (woc *wfOperationCtx) executeSteps(ctx context.Context, nodeName string, tm
 
 		sgNode := woc.executeStepGroup(ctx, stepGroup.Steps, sgNodeName, &stepsCtx)
 
-		if sgNode.Fulfilled() {
-			if tmpl.Synchronization != nil {
-				woc.controller.syncManager.Release(woc.wf, node.ID, tmpl.Synchronization)
-			}
-		} else {
+		if !sgNode.Fulfilled() {
 			woc.log.Infof("Workflow step group node %s not yet completed", sgNode.ID)
 			return node, nil
 		}
@@ -147,6 +140,7 @@ func (woc *wfOperationCtx) executeSteps(ctx context.Context, nodeName string, tm
 			}
 		}
 	}
+
 	woc.updateOutboundNodes(nodeName, tmpl)
 	// If this template has outputs from any of its steps, copy them to this node here
 	outputs, err := getTemplateOutputsFromScope(tmpl, stepsCtx.scope)
@@ -266,7 +260,7 @@ func (woc *wfOperationCtx) executeStepGroup(ctx context.Context, stepGroup []wfv
 		if !childNode.Fulfilled() {
 			completed = false
 		} else if childNode.Completed() {
-			hasOnExitNode, onExitNode, err := woc.runOnExitNode(ctx, step.OnExit, step.Name, childNode.Name, stepsCtx.boundaryID, stepsCtx.tmplCtx)
+			hasOnExitNode, onExitNode, err := woc.runOnExitNode(ctx, step.GetExitHook(woc.execWf.Spec.Arguments), step.Name, childNode.Name, stepsCtx.boundaryID, stepsCtx.tmplCtx, "steps."+step.Name, childNode.Outputs)
 			if hasOnExitNode && (onExitNode == nil || !onExitNode.Fulfilled() || err != nil) {
 				// The onExit node is either not complete or has errored out, return.
 				completed = false
@@ -356,12 +350,7 @@ func (woc *wfOperationCtx) resolveReferences(stepGroup []wfv1.WorkflowStep, scop
 		if err != nil {
 			return nil, errors.InternalWrapError(err)
 		}
-		fstTmpl, err := fasttemplate.NewTemplate(string(stepBytes), "{{", "}}")
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse argo varaible: %w", err)
-		}
-
-		newStepStr, err := common.Replace(fstTmpl, woc.globalParams.Merge(scope.getParameters()), true)
+		newStepStr, err := template.Replace(string(stepBytes), woc.globalParams.Merge(scope.getParameters()), true)
 		if err != nil {
 			return nil, err
 		}
@@ -392,10 +381,11 @@ func (woc *wfOperationCtx) resolveReferences(stepGroup []wfv1.WorkflowStep, scop
 
 		// Step 2: replace all artifact references
 		for j, art := range newStep.Arguments.Artifacts {
-			if art.From == "" {
+			if art.From == "" && art.FromExpression == "" {
 				continue
 			}
-			resolvedArt, err := scope.resolveArtifact(art.From, art.SubPath)
+
+			resolvedArt, err := scope.resolveArtifact(&art)
 			if err != nil {
 				if art.Optional {
 					continue
@@ -471,14 +461,14 @@ func (woc *wfOperationCtx) expandStep(step wfv1.WorkflowStep) ([]wfv1.WorkflowSt
 	if err != nil {
 		return nil, errors.InternalWrapError(err)
 	}
-	fstTmpl, err := fasttemplate.NewTemplate(string(stepBytes), "{{", "}}")
+	t, err := template.NewTemplate(string(stepBytes))
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse argo varaible: %w", err)
+		return nil, fmt.Errorf("unable to parse argo variable: %w", err)
 	}
 
 	for i, item := range items {
 		var newStep wfv1.WorkflowStep
-		newStepName, err := processItem(fstTmpl, step.Name, i, item, &newStep)
+		newStepName, err := processItem(t, step.Name, i, item, &newStep)
 		if err != nil {
 			return nil, err
 		}

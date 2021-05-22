@@ -17,13 +17,13 @@ import (
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/argoproj/argo/v3/persist/sqldb"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/server/auth"
-	"github.com/argoproj/argo/v3/util/instanceid"
-	"github.com/argoproj/argo/v3/workflow/artifactrepositories"
-	artifact "github.com/argoproj/argo/v3/workflow/artifacts"
-	"github.com/argoproj/argo/v3/workflow/hydrator"
+	"github.com/argoproj/argo-workflows/v3/persist/sqldb"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/server/auth"
+	"github.com/argoproj/argo-workflows/v3/util/instanceid"
+	"github.com/argoproj/argo-workflows/v3/workflow/artifactrepositories"
+	artifact "github.com/argoproj/argo-workflows/v3/workflow/artifacts"
+	"github.com/argoproj/argo-workflows/v3/workflow/hydrator"
 )
 
 type ArtifactServer struct {
@@ -43,8 +43,15 @@ func newArtifactServer(authN auth.Gatekeeper, hydrator hydrator.Interface, wfArc
 	return &ArtifactServer{authN, hydrator, wfArchive, instanceIDService, artDriverFactory, artifactRepositories}
 }
 
-func (a *ArtifactServer) GetArtifact(w http.ResponseWriter, r *http.Request) {
+func (a *ArtifactServer) GetOutputArtifact(w http.ResponseWriter, r *http.Request) {
+	a.getArtifact(w, r, false)
+}
 
+func (a *ArtifactServer) GetInputArtifact(w http.ResponseWriter, r *http.Request) {
+	a.getArtifact(w, r, true)
+}
+
+func (a *ArtifactServer) getArtifact(w http.ResponseWriter, r *http.Request, isInput bool) {
 	ctx, err := a.gateKeeping(r)
 	if err != nil {
 		w.WriteHeader(401)
@@ -58,7 +65,7 @@ func (a *ArtifactServer) GetArtifact(w http.ResponseWriter, r *http.Request) {
 	nodeId := path[4]
 	artifactName := path[5]
 
-	log.WithFields(log.Fields{"namespace": namespace, "workflowName": workflowName, "nodeId": nodeId, "artifactName": artifactName}).Info("Download artifact")
+	log.WithFields(log.Fields{"namespace": namespace, "workflowName": workflowName, "nodeId": nodeId, "artifactName": artifactName, "isInput": isInput}).Info("Download artifact")
 
 	wf, err := a.getWorkflowAndValidate(ctx, namespace, workflowName)
 	if err != nil {
@@ -66,7 +73,7 @@ func (a *ArtifactServer) GetArtifact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.returnArtifact(ctx, w, r, wf, nodeId, artifactName)
+	err = a.returnArtifact(ctx, w, r, wf, nodeId, artifactName, isInput)
 
 	if err != nil {
 		a.serverInternalError(err, w)
@@ -74,8 +81,15 @@ func (a *ArtifactServer) GetArtifact(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *ArtifactServer) GetArtifactByUID(w http.ResponseWriter, r *http.Request) {
+func (a *ArtifactServer) GetOutputArtifactByUID(w http.ResponseWriter, r *http.Request) {
+	a.getArtifactByUID(w, r, false)
+}
 
+func (a *ArtifactServer) GetInputArtifactByUID(w http.ResponseWriter, r *http.Request) {
+	a.getArtifactByUID(w, r, true)
+}
+
+func (a *ArtifactServer) getArtifactByUID(w http.ResponseWriter, r *http.Request, isInput bool) {
 	ctx, err := a.gateKeeping(r)
 	if err != nil {
 		w.WriteHeader(401)
@@ -89,7 +103,7 @@ func (a *ArtifactServer) GetArtifactByUID(w http.ResponseWriter, r *http.Request
 	nodeId := path[3]
 	artifactName := path[4]
 
-	log.WithFields(log.Fields{"uid": uid, "nodeId": nodeId, "artifactName": artifactName}).Info("Download artifact")
+	log.WithFields(log.Fields{"uid": uid, "nodeId": nodeId, "artifactName": artifactName, "isInput": isInput}).Info("Download artifact")
 
 	wf, err := a.getWorkflowByUID(ctx, uid)
 	if err != nil {
@@ -97,7 +111,7 @@ func (a *ArtifactServer) GetArtifactByUID(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = a.returnArtifact(ctx, w, r, wf, nodeId, artifactName)
+	err = a.returnArtifact(ctx, w, r, wf, nodeId, artifactName, isInput)
 
 	if err != nil {
 		a.serverInternalError(err, w)
@@ -126,10 +140,15 @@ func (a *ArtifactServer) serverInternalError(err error, w http.ResponseWriter) {
 	_, _ = w.Write([]byte(err.Error()))
 }
 
-func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWriter, r *http.Request, wf *wfv1.Workflow, nodeId, artifactName string) error {
+func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWriter, r *http.Request, wf *wfv1.Workflow, nodeId, artifactName string, isInput bool) error {
 	kubeClient := auth.GetKubeClient(ctx)
 
-	art := wf.Status.Nodes[nodeId].Outputs.GetArtifactByName(artifactName)
+	var art *wfv1.Artifact
+	if isInput {
+		art = wf.Status.Nodes[nodeId].Inputs.GetArtifactByName(artifactName)
+	} else {
+		art = wf.Status.Nodes[nodeId].Outputs.GetArtifactByName(artifactName)
+	}
 	if art == nil {
 		return fmt.Errorf("artifact not found")
 	}
@@ -165,7 +184,6 @@ func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWrit
 	}
 
 	file, err := os.Open(tmpPath)
-
 	if err != nil {
 		return err
 	}
@@ -173,7 +191,6 @@ func (a *ArtifactServer) returnArtifact(ctx context.Context, w http.ResponseWrit
 	defer file.Close()
 
 	stats, err := file.Stat()
-
 	if err != nil {
 		return err
 	}

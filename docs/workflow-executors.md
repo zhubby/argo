@@ -16,7 +16,7 @@ The executor to be used in your workflows can be changed in [the configmap](./wo
     * It requires `privileged` access to `docker.sock` of the host to be mounted which. Often rejected by Open Policy Agent (OPA) or your Pod Security Policy (PSP).
     * It can escape the privileges of the pod's service account
     * It cannot [`runAsNonRoot`](workflow-pod-security-context.md).
-* Most scalable:
+* Equal most scalable:
     * It communicates directly with the local Docker daemon.
 * Artifacts:
     * Output artifacts can be located on the base layer (e.g. `/tmp`).
@@ -28,12 +28,12 @@ The executor to be used in your workflows can be changed in [the configmap](./wo
 ## Kubelet (kubelet)
 
 * Reliability:
-    * Least well-tested
-    * Least popular
+    * Second least well-tested
+    * Second least popular
 * Secure
     * No `privileged` access
     * Cannot escape the privileges of the pod's service account
-    * [`runAsNonRoot`](workflow-pod-security-context.md) - TBD, see [#4186](https://github.com/argoproj/argo/issues/4186)
+    * [`runAsNonRoot`](workflow-pod-security-context.md) - TBD, see [#4186](https://github.com/argoproj/argo-workflows/issues/4186)
 * Scalable:
     * Operations performed against the local Kubelet
 * Artifacts:
@@ -73,9 +73,52 @@ The executor to be used in your workflows can be changed in [the configmap](./wo
 * Artifacts:
     * Output artifacts can be located on the base layer (e.g. `/tmp`)
     * Cannot capture artifacts from a base layer which has a volume mounted under it
+    * Cannot capture artifacts from base layer if the container is short-lived.
 * Configuration:
     * No additional configuration needed.
 * Process will no longer run with PID 1
 * [Doesn't work for Windows containers](https://kubernetes.io/docs/setup/production-environment/windows/intro-windows-in-kubernetes/#v1-pod).
 
 [https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/)
+
+## Emissary (emissary)
+
+![alpha](assets/alpha.svg)
+
+> v3.1 and after
+
+This is the most fully featured executor.
+
+* Reliability:
+    * Not yet well-tested.
+    * Not yet popular.
+* More secure:
+    * No `privileged` access
+    * Cannot escape the privileges of the pod's service account
+    * Can [`runAsNonRoot`](workflow-pod-security-context.md).
+* Scalable:
+    * It reads and writes to and from the container's disk and typically does not use any network APIs unless resource
+      type template is used.
+* Artifacts:
+    * Output artifacts can be located on the base layer (e.g. `/tmp`).
+* Configuration:
+    * `command` must be specified for containers. 
+  
+You can determine the command and args as follows:
+
+```bash
+docker image inspect -f '{{.Config.Entrypoint}} {{.Config.Cmd}}' argoproj/argosay:v2
+```
+
+[Learn more about command and args](https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
+)
+
+### Image Index
+
+If the emissary cannot determine which command to run, because you did not specify it in your workflow spec, then it
+will look it up in the **image index**. This is nothing more fancy than
+a [configuration item](workflow-controller-configmap.yaml).
+
+### Exit Code 64
+
+The emissary will exit with code 64 if it fails. This may indicate a bug in the emissary.

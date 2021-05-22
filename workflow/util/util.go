@@ -34,28 +34,28 @@ import (
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/yaml"
 
-	"github.com/argoproj/argo/v3/errors"
-	"github.com/argoproj/argo/v3/pkg/apis/workflow"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	wfclientset "github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
-	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
-	cmdutil "github.com/argoproj/argo/v3/util/cmd"
-	errorsutil "github.com/argoproj/argo/v3/util/errors"
-	"github.com/argoproj/argo/v3/util/retry"
-	unstructutil "github.com/argoproj/argo/v3/util/unstructured"
-	waitutil "github.com/argoproj/argo/v3/util/wait"
-	"github.com/argoproj/argo/v3/workflow/common"
-	"github.com/argoproj/argo/v3/workflow/hydrator"
-	"github.com/argoproj/argo/v3/workflow/packer"
-	"github.com/argoproj/argo/v3/workflow/templateresolution"
-	"github.com/argoproj/argo/v3/workflow/validate"
+	"github.com/argoproj/argo-workflows/v3/errors"
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	wfclientset "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	cmdutil "github.com/argoproj/argo-workflows/v3/util/cmd"
+	errorsutil "github.com/argoproj/argo-workflows/v3/util/errors"
+	"github.com/argoproj/argo-workflows/v3/util/retry"
+	unstructutil "github.com/argoproj/argo-workflows/v3/util/unstructured"
+	waitutil "github.com/argoproj/argo-workflows/v3/util/wait"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/hydrator"
+	"github.com/argoproj/argo-workflows/v3/workflow/packer"
+	"github.com/argoproj/argo-workflows/v3/workflow/templateresolution"
+	"github.com/argoproj/argo-workflows/v3/workflow/validate"
 )
 
 // NewWorkflowInformer returns the workflow informer used by the controller. This is actually
 // a custom built UnstructuredInformer which is in actuality returning unstructured.Unstructured
 // objects. We no longer return WorkflowInformer due to:
 // https://github.com/kubernetes/kubernetes/issues/57705
-// https://github.com/argoproj/argo/issues/632
+// https://github.com/argoproj/argo-workflows/issues/632
 func NewWorkflowInformer(dclient dynamic.Interface, ns string, resyncPeriod time.Duration, tweakListOptions internalinterfaces.TweakListOptionsFunc, indexers cache.Indexers) cache.SharedIndexInformer {
 	resource := schema.GroupVersionResource{
 		Group:    workflow.Group,
@@ -169,7 +169,6 @@ func IsWorkflowCompleted(wf *wfv1.Workflow) bool {
 
 // SubmitWorkflow validates and submit a single workflow and override some of the fields of the workflow
 func SubmitWorkflow(ctx context.Context, wfIf v1alpha1.WorkflowInterface, wfClientset wfclientset.Interface, namespace string, wf *wfv1.Workflow, opts *wfv1.SubmitOpts) (*wfv1.Workflow, error) {
-
 	err := ApplySubmitOpts(wf, opts)
 	if err != nil {
 		return nil, err
@@ -249,6 +248,21 @@ func ApplySubmitOpts(wf *wfv1.Workflow, opts *wfv1.SubmitOpts) error {
 		}
 	}
 	wf.SetLabels(wfLabels)
+	wfAnnotations := wf.GetAnnotations()
+	if wfAnnotations == nil {
+		wfAnnotations = make(map[string]string)
+	}
+	if opts.Annotations != "" {
+		fmt.Println(opts.Annotations)
+		passedAnnotations, err := cmdutil.ParseLabels(opts.Annotations)
+		if err != nil {
+			return fmt.Errorf("expected Annotations of the form: NAME1=VALUE2,NAME2=VALUE2. Received: %s: %w", opts.Labels, err)
+		}
+		for k, v := range passedAnnotations {
+			wfAnnotations[k] = v
+		}
+	}
+	wf.SetAnnotations(wfAnnotations)
 	if len(opts.Parameters) > 0 || opts.ParameterFile != "" {
 		newParams := make([]wfv1.Parameter, 0)
 		passedParams := make(map[string]bool)
@@ -436,6 +450,39 @@ type SetOperationValues struct {
 	OutputParameters map[string]string
 }
 
+func AddParamToGlobalScope(wf *wfv1.Workflow, log *log.Entry, param wfv1.Parameter) bool {
+	wfUpdated := false
+	if param.GlobalName == "" {
+		return wfUpdated
+	}
+	index := -1
+	if wf.Status.Outputs != nil {
+		for i, gParam := range wf.Status.Outputs.Parameters {
+			if gParam.Name == param.GlobalName {
+				index = i
+				break
+			}
+		}
+	} else {
+		wf.Status.Outputs = &wfv1.Outputs{}
+	}
+	paramName := fmt.Sprintf("workflow.outputs.parameters.%s", param.GlobalName)
+	if index == -1 {
+		log.Infof("setting %s: '%s'", paramName, param.Value)
+		gParam := wfv1.Parameter{Name: param.GlobalName, Value: param.Value}
+		wf.Status.Outputs.Parameters = append(wf.Status.Outputs.Parameters, gParam)
+		wfUpdated = true
+	} else {
+		prevVal := *wf.Status.Outputs.Parameters[index].Value
+		if prevVal != *param.Value {
+			log.Infof("overwriting %s: '%s' -> '%s'", paramName, wf.Status.Outputs.Parameters[index].Value, param.Value)
+			wf.Status.Outputs.Parameters[index].Value = param.Value
+			wfUpdated = true
+		}
+	}
+	return wfUpdated
+}
+
 func updateSuspendedNode(ctx context.Context, wfIf v1alpha1.WorkflowInterface, hydrator hydrator.Interface, workflowName string, nodeFieldSelector string, values SetOperationValues) error {
 	selector, err := fields.ParseSelector(nodeFieldSelector)
 	if err != nil {
@@ -488,6 +535,7 @@ func updateSuspendedNode(ctx context.Context, wfIf v1alpha1.WorkflowInterface, h
 									node.Outputs.Parameters[i].ValueFrom = nil
 									nodeUpdated = true
 									hit = true
+									AddParamToGlobalScope(wf, log.NewEntry(log.StandardLogger()), node.Outputs.Parameters[i])
 									break
 								}
 							}
@@ -706,6 +754,7 @@ func retryWorkflow(ctx context.Context, kubeClient kubernetes.Interface, hydrato
 	newWF.Status.Phase = wfv1.WorkflowRunning
 	newWF.Status.Nodes = make(wfv1.Nodes)
 	newWF.Status.Message = ""
+	newWF.Status.StartedAt = metav1.Time{Time: time.Now().UTC()}
 	newWF.Status.FinishedAt = metav1.Time{}
 	newWF.Spec.Shutdown = ""
 	if newWF.Spec.ActiveDeadlineSeconds != nil && *newWF.Spec.ActiveDeadlineSeconds == 0 {
@@ -739,6 +788,7 @@ func retryWorkflow(ctx context.Context, kubeClient kubernetes.Interface, hydrato
 				newNode := node.DeepCopy()
 				newNode.Phase = wfv1.NodeRunning
 				newNode.Message = ""
+				newNode.StartedAt = metav1.Time{Time: time.Now().UTC()}
 				newNode.FinishedAt = metav1.Time{}
 				newWF.Status.Nodes[newNode.ID] = *newNode
 				continue
@@ -760,6 +810,7 @@ func retryWorkflow(ctx context.Context, kubeClient kubernetes.Interface, hydrato
 			newNode := node.DeepCopy()
 			newNode.Phase = wfv1.NodeRunning
 			newNode.Message = ""
+			newNode.StartedAt = metav1.Time{Time: time.Now().UTC()}
 			newNode.FinishedAt = metav1.Time{}
 			newWF.Status.Nodes[newNode.ID] = *newNode
 			continue
@@ -813,13 +864,13 @@ func getNodeIDsToReset(restartSuccessful bool, nodeFieldSelector string, nodes w
 	} else {
 		for _, node := range nodes {
 			if SelectorMatchesNode(selector, node) {
-				//traverse all children of the node
+				// traverse all children of the node
 				var queue []string
 				queue = append(queue, node.ID)
 
 				for len(queue) > 0 {
 					childNode := queue[0]
-					//if the child isn't already in nodeIDsToReset then we add it and traverse its children
+					// if the child isn't already in nodeIDsToReset then we add it and traverse its children
 					if _, present := nodeIDsToReset[childNode]; !present {
 						nodeIDsToReset[childNode] = true
 						queue = append(queue, nodes[childNode].Children...)
@@ -849,9 +900,23 @@ func IsWorkflowSuspended(wf *wfv1.Workflow) bool {
 
 // TerminateWorkflow terminates a workflow by setting its spec.shutdown to ShutdownStrategyTerminate
 func TerminateWorkflow(ctx context.Context, wfClient v1alpha1.WorkflowInterface, name string) error {
+	return patchShutdownStrategy(ctx, wfClient, name, wfv1.ShutdownStrategyTerminate)
+}
+
+// StopWorkflow terminates a workflow by setting its spec.shutdown to ShutdownStrategyStop
+// Or terminates a single resume step referenced by nodeFieldSelector
+func StopWorkflow(ctx context.Context, wfClient v1alpha1.WorkflowInterface, hydrator hydrator.Interface, name string, nodeFieldSelector string, message string) error {
+	if len(nodeFieldSelector) > 0 {
+		return updateSuspendedNode(ctx, wfClient, hydrator, name, nodeFieldSelector, SetOperationValues{Phase: wfv1.NodeFailed, Message: message})
+	}
+	return patchShutdownStrategy(ctx, wfClient, name, wfv1.ShutdownStrategyStop)
+}
+
+// patchShutdownStrategy patches the shutdown strategy to a workflow.
+func patchShutdownStrategy(ctx context.Context, wfClient v1alpha1.WorkflowInterface, name string, strategy wfv1.ShutdownStrategy) error {
 	patchObj := map[string]interface{}{
 		"spec": map[string]interface{}{
-			"shutdown": wfv1.ShutdownStrategyTerminate,
+			"shutdown": strategy,
 		},
 	}
 	var err error
@@ -867,37 +932,6 @@ func TerminateWorkflow(ctx context.Context, wfClient v1alpha1.WorkflowInterface,
 		return !errorsutil.IsTransientErr(err), err
 	})
 	return err
-}
-
-// StopWorkflow terminates a workflow by setting its spec.shutdown to ShutdownStrategyStop
-// Or terminates a single resume step referenced by nodeFieldSelector
-func StopWorkflow(ctx context.Context, wfClient v1alpha1.WorkflowInterface, hydrator hydrator.Interface, name string, nodeFieldSelector string, message string) error {
-	if len(nodeFieldSelector) > 0 {
-		return updateSuspendedNode(ctx, wfClient, hydrator, name, nodeFieldSelector, SetOperationValues{Phase: wfv1.NodeFailed, Message: message})
-	} else {
-		patchObj := map[string]interface{}{
-			"spec": map[string]interface{}{
-				"shutdown": wfv1.ShutdownStrategyStop,
-			},
-		}
-		var err error
-		patch, err := json.Marshal(patchObj)
-		if err != nil {
-			return errors.InternalWrapError(err)
-		}
-		for attempt := 0; attempt < 10; attempt++ {
-			_, err = wfClient.Patch(ctx, name, types.MergePatchType, patch, metav1.PatchOptions{})
-			if err != nil {
-				if !apierr.IsConflict(err) {
-					return err
-				}
-			} else {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-		return err
-	}
 }
 
 func SetWorkflow(ctx context.Context, wfClient v1alpha1.WorkflowInterface, hydrator hydrator.Interface, name string, nodeFieldSelector string, values SetOperationValues) error {
@@ -990,39 +1024,16 @@ func ConvertYAMLToJSON(str string) (string, error) {
 
 // PodSpecPatchMerge will do strategic merge the workflow level PodSpecPatch and template level PodSpecPatch
 func PodSpecPatchMerge(wf *wfv1.Workflow, tmpl *wfv1.Template) (string, error) {
-	var wfPatch, tmplPatch, mergedPatch string
-	var err error
-
-	if wf.Spec.HasPodSpecPatch() {
-		wfPatch, err = ConvertYAMLToJSON(wf.Spec.PodSpecPatch)
-		if err != nil {
-			return "", err
-		}
+	wfPatch, err := ConvertYAMLToJSON(wf.Spec.PodSpecPatch)
+	if err != nil {
+		return "", err
 	}
-	if tmpl.HasPodSpecPatch() {
-		tmplPatch, err = ConvertYAMLToJSON(tmpl.PodSpecPatch)
-		if err != nil {
-			return "", err
-		}
-
-		if wfPatch != "" {
-			mergedByte, err := strategicpatch.StrategicMergePatch([]byte(wfPatch), []byte(tmplPatch), apiv1.PodSpec{})
-			if err != nil {
-				return "", err
-			}
-			mergedPatch = string(mergedByte)
-		} else {
-			mergedPatch = tmplPatch
-		}
-	} else {
-		mergedPatch = wfPatch
+	tmplPatch, err := ConvertYAMLToJSON(tmpl.PodSpecPatch)
+	if err != nil {
+		return "", err
 	}
-	return mergedPatch, nil
-}
-
-func ValidateJsonStr(jsonStr string, schema interface{}) bool {
-	err := json.Unmarshal([]byte(jsonStr), &schema)
-	return err == nil
+	data, err := strategicpatch.StrategicMergePatch([]byte(wfPatch), []byte(tmplPatch), apiv1.PodSpec{})
+	return string(data), err
 }
 
 func GetNodeType(tmpl *wfv1.Template) wfv1.NodeType {
@@ -1030,7 +1041,7 @@ func GetNodeType(tmpl *wfv1.Template) wfv1.NodeType {
 		return wfv1.NodeTypeRetry
 	}
 	switch tmpl.GetType() {
-	case wfv1.TemplateTypeContainer, wfv1.TemplateTypeScript, wfv1.TemplateTypeResource:
+	case wfv1.TemplateTypeContainer, wfv1.TemplateTypeContainerSet, wfv1.TemplateTypeScript, wfv1.TemplateTypeResource, wfv1.TemplateTypeData:
 		return wfv1.NodeTypePod
 	case wfv1.TemplateTypeDAG:
 		return wfv1.NodeTypeDAG

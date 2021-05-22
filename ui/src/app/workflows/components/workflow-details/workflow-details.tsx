@@ -7,6 +7,7 @@ import {execSpec, Link, Workflow} from '../../../../models';
 import {uiUrl} from '../../../shared/base';
 import {CostOptimisationNudge} from '../../../shared/components/cost-optimisation-nudge';
 import {ErrorNotice} from '../../../shared/components/error-notice';
+import {ProcessURL} from '../../../shared/components/links';
 import {Loading} from '../../../shared/components/loading';
 import {SecurityNudge} from '../../../shared/components/security-nudge';
 import {hasWarningConditionBadge} from '../../../shared/conditions-panel';
@@ -14,6 +15,7 @@ import {Context} from '../../../shared/context';
 import {historyUrl} from '../../../shared/history';
 import {RetryWatch} from '../../../shared/retry-watch';
 import {services} from '../../../shared/services';
+import {useQueryParams} from '../../../shared/use-query-params';
 import * as Operations from '../../../shared/workflow-operations-map';
 import {WorkflowOperations} from '../../../shared/workflow-operations-map';
 import {WidgetGallery} from '../../../widgets/widget-gallery';
@@ -41,14 +43,25 @@ export const WorkflowDetails = ({history, location, match}: RouteComponentProps<
     const queryParams = new URLSearchParams(location.search);
 
     const [namespace] = useState(match.params.namespace);
-    const [name] = useState(match.params.name);
+    const [name, setName] = useState(match.params.name);
     const [tab, setTab] = useState(queryParams.get('tab') || 'workflow');
     const [nodeId, setNodeId] = useState(queryParams.get('nodeId'));
+    const [nodePanelView, setNodePanelView] = useState(queryParams.get('nodePanelView'));
     const [sidePanel, setSidePanel] = useState(queryParams.get('sidePanel'));
 
+    useEffect(
+        useQueryParams(history, p => {
+            setTab(p.get('tab') || 'workflow');
+            setNodeId(p.get('nodeId'));
+            setNodePanelView(p.get('nodePanelView'));
+            setSidePanel(p.get('sidePanel'));
+        }),
+        [history]
+    );
+
     useEffect(() => {
-        history.push(historyUrl('workflows/{namespace}/{name}', {namespace, name, tab, nodeId, sidePanel}));
-    }, [namespace, name, tab, nodeId, sidePanel]);
+        history.push(historyUrl('workflows/{namespace}/{name}', {namespace, name, tab, nodeId, nodePanelView, sidePanel}));
+    }, [namespace, name, tab, nodeId, nodePanelView, sidePanel]);
 
     const [workflow, setWorkflow] = useState<Workflow>();
     const [links, setLinks] = useState<Link[]>();
@@ -81,8 +94,7 @@ export const WorkflowDetails = ({history, location, match}: RouteComponentProps<
                                         if (workflowOperation.title === 'DELETE') {
                                             navigation.goto(uiUrl(`workflows/${workflow.metadata.namespace}`));
                                         } else {
-                                            // navigation.goto does not seem to work here
-                                            document.location.href = uiUrl(`workflows/${wf.metadata.namespace}/${wf.metadata.name}`);
+                                            setName(wf.metadata.name);
                                         }
                                     })
                                     .catch(setError);
@@ -151,20 +163,22 @@ export const WorkflowDetails = ({history, location, match}: RouteComponentProps<
                 {!workflow ? (
                     <Loading />
                 ) : (
-                    <div className='argo-container'>
-                        <div className='workflow-details__content'>
-                            <WorkflowSummaryPanel workflow={workflow} />
-                            {renderSecurityNudge()}
-                            {renderCostOptimisations()}
-                            {workflow.spec.arguments && workflow.spec.arguments.parameters && (
-                                <React.Fragment>
-                                    <h6>Parameters</h6>
-                                    <WorkflowParametersPanel parameters={workflow.spec.arguments.parameters} />
-                                </React.Fragment>
-                            )}
-                            <h5>Artifacts</h5>
-                            <WorkflowArtifacts workflow={workflow} archived={false} />
-                            <WorkflowResourcePanel workflow={workflow} />
+                    <div className='workflow-details__container'>
+                        <div className='argo-container'>
+                            <div className='workflow-details__content'>
+                                <WorkflowSummaryPanel workflow={workflow} />
+                                {renderSecurityNudge()}
+                                {renderCostOptimisations()}
+                                {workflow.spec.arguments && workflow.spec.arguments.parameters && (
+                                    <React.Fragment>
+                                        <h6>Parameters</h6>
+                                        <WorkflowParametersPanel parameters={workflow.spec.arguments.parameters} />
+                                    </React.Fragment>
+                                )}
+                                <h5>Artifacts</h5>
+                                <WorkflowArtifacts workflow={workflow} archived={false} />
+                                <WorkflowResourcePanel workflow={workflow} />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -190,12 +204,20 @@ export const WorkflowDetails = ({history, location, match}: RouteComponentProps<
     }, [namespace, name]);
 
     const openLink = (link: Link) => {
-        const url = link.url
-            .replace(/\${metadata\.namespace}/g, workflow.metadata.namespace)
-            .replace(/\${metadata\.name}/g, workflow.metadata.name)
-            .replace(/\${status\.startedAt}/g, workflow.status.startedAt)
-            .replace(/\${status\.finishedAt}/g, workflow.status.finishedAt);
-        if ((window.event as MouseEvent).ctrlKey) {
+        const object = {
+            metadata: {
+                namespace: workflow.metadata.namespace,
+                name: workflow.metadata.name
+            },
+            workflow,
+            status: {
+                startedAt: workflow.status.startedAt,
+                finishedAt: workflow.status.finishedAt
+            }
+        };
+        const url = ProcessURL(link.url, object);
+
+        if ((window.event as MouseEvent).ctrlKey || (window.event as MouseEvent).metaKey) {
             window.open(url, '_blank');
         } else {
             document.location.href = url;
@@ -253,9 +275,11 @@ export const WorkflowDetails = ({history, location, match}: RouteComponentProps<
                                 {selectedNode && (
                                     <WorkflowNodeInfo
                                         node={selectedNode}
+                                        onTabSelected={setNodePanelView}
+                                        selectedTabKey={nodePanelView}
                                         workflow={workflow}
                                         links={links}
-                                        onShowContainerLogs={(_, container) => setSidePanel(`logs:${nodeId}:${container}`)}
+                                        onShowContainerLogs={(x, container) => setSidePanel(`logs:${x}:${container}`)}
                                         onShowEvents={() => setSidePanel(`events:${nodeId}`)}
                                         onShowYaml={() => setSidePanel(`yaml:${nodeId}`)}
                                         archived={false}

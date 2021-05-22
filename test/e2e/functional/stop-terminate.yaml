@@ -2,13 +2,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: stop-terminate-
-  labels:
-    argo-e2e: true
 spec:
-  entrypoint: diamond
+  entrypoint: main
   onExit: exit
   templates:
-    - name: diamond
+    - name: main
       dag:
         tasks:
           - name: A
@@ -17,9 +15,10 @@ spec:
 
     - name: echo
       container:
-        image: argoproj/argosay:v2
-        args: [ sleep, "999" ]
+        image: argoproj/argosay:v1
+        command: [ sleep ]
+        args: [ "999" ]
 
     - name: exit
       container:
-        image: argoproj/argosay:v2
+        image: argoproj/argosay:v1

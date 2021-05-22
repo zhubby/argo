@@ -8,11 +8,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/argoproj/argo/v3/workflow/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
 )
 
 func NewResourceCommand() *cobra.Command {
-	var command = cobra.Command{
+	command := cobra.Command{
 		Use:   "resource (get|create|apply|delete) MANIFEST",
 		Short: "update a resource and wait for resource conditions",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -45,7 +45,7 @@ func execResource(ctx context.Context, action string) error {
 		wfExecutor.AddError(err)
 		return err
 	}
-	resourceNamespace, resourceName, err := wfExecutor.ExecResource(
+	resourceNamespace, resourceName, selfLink, err := wfExecutor.ExecResource(
 		action, common.ExecutorResourceManifestPath, wfExecutor.Template.Resource.Flags,
 	)
 	if err != nil {
@@ -53,7 +53,7 @@ func execResource(ctx context.Context, action string) error {
 		return err
 	}
 	if !isDelete {
-		err = wfExecutor.WaitResource(ctx, resourceNamespace, resourceName)
+		err = wfExecutor.WaitResource(ctx, resourceNamespace, resourceName, selfLink)
 		if err != nil {
 			wfExecutor.AddError(err)
 			return err

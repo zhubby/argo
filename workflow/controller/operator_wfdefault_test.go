@@ -2,14 +2,13 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 )
 
 var wfDefaults = `
@@ -37,7 +36,6 @@ var wfDefaults = `
             - cowsay
           image: docker/whalesay
         name: whalesay-exit
-    ttlSecondsAfterFinished: 86400
     ttlStrategy: 
       secondsAfterCompletion: 60
     volumes: 
@@ -46,6 +44,7 @@ var wfDefaults = `
         secret: 
           secretName: test
 `
+
 var simpleWf = `
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
@@ -62,6 +61,7 @@ spec:
       command: [cowsay]
       args: ["hello world"]
 `
+
 var wf_wfdefaultResult = `
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
@@ -99,7 +99,6 @@ spec:
           - cowsay
         image: docker/whalesay
       name: whalesay-exit
-  ttlSecondsAfterFinished: 86400
   ttlStrategy: 
     secondsAfterCompletion: 60
   volumes: 
@@ -108,6 +107,7 @@ spec:
       secret: 
         secretName: test
 `
+
 var simpleWFT = `
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
@@ -130,6 +130,7 @@ spec:
         command: [cowsay]
         args: ["{{inputs.parameters.message}}"]
 `
+
 var storedSpecResult = `
 {
    "activeDeadlineSeconds": 7200,
@@ -178,7 +179,6 @@ var storedSpecResult = `
          "name": "whalesay-exit"
       }
    ],
-   "ttlSecondsAfterFinished": 86400,
    "ttlStrategy": {
       "secondsAfterCompletion": 60
    },
@@ -196,10 +196,10 @@ var storedSpecResult = `
 func TestWFDefaultsWithWorkflow(t *testing.T) {
 	assert := assert.New(t)
 
-	wfDefault := unmarshalWF(wfDefaults)
-	wf := unmarshalWF(simpleWf)
+	wfDefault := wfv1.MustUnmarshalWorkflow(wfDefaults)
+	wf := wfv1.MustUnmarshalWorkflow(simpleWf)
 	wf1 := wf.DeepCopy()
-	wfResult := unmarshalWF(wf_wfdefaultResult)
+	wfResult := wfv1.MustUnmarshalWorkflow(wf_wfdefaultResult)
 	cancel, controller := newControllerWithDefaults()
 	defer cancel()
 
@@ -221,11 +221,10 @@ func TestWFDefaultsWithWorkflow(t *testing.T) {
 
 func TestWFDefaultWithWFTAndWf(t *testing.T) {
 	assert := assert.New(t)
-	wfDefault := unmarshalWF(wfDefaults)
-	wft := unmarshalWFTmpl(simpleWFT)
+	wfDefault := wfv1.MustUnmarshalWorkflow(wfDefaults)
+	wft := wfv1.MustUnmarshalWorkflowTemplate(simpleWFT)
 	var resultSpec wfv1.WorkflowSpec
-	err := json.Unmarshal([]byte(storedSpecResult), &resultSpec)
-	assert.NoError(err)
+	wfv1.MustUnmarshal([]byte(storedSpecResult), &resultSpec)
 
 	ctx := context.Background()
 	t.Run("SubmitSimpleWorkflowRef", func(t *testing.T) {
@@ -250,7 +249,8 @@ func TestWFDefaultWithWFTAndWf(t *testing.T) {
 			SecondsAfterCompletion: pointer.Int32Ptr(10),
 		}
 
-		wf := wfv1.Workflow{ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		wf := wfv1.Workflow{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 			Spec: wfv1.WorkflowSpec{
 				WorkflowTemplateRef: &wfv1.WorkflowTemplateRef{Name: "workflow-template-submittable"},
 				Entrypoint:          "Test",
@@ -285,7 +285,8 @@ func TestWFDefaultWithWFTAndWf(t *testing.T) {
 			SecondsAfterCompletion: pointer.Int32Ptr(10),
 		}
 
-		wf := wfv1.Workflow{ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		wf := wfv1.Workflow{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 			Spec: wfv1.WorkflowSpec{
 				WorkflowTemplateRef: &wfv1.WorkflowTemplateRef{Name: "workflow-template-submittable"},
 				Entrypoint:          "Test",
@@ -296,7 +297,7 @@ func TestWFDefaultWithWFTAndWf(t *testing.T) {
 				},
 			},
 		}
-		//resultSpec.Arguments.Parameters = append(resultSpec.Arguments.Parameters, args.Parameters...)
+		// resultSpec.Arguments.Parameters = append(resultSpec.Arguments.Parameters, args.Parameters...)
 		resultSpec.Entrypoint = "Test"
 		resultSpec.TTLStrategy = &ttlStrategy
 		resultSpec.WorkflowTemplateRef = &wfv1.WorkflowTemplateRef{Name: "workflow-template-submittable"}
@@ -308,5 +309,4 @@ func TestWFDefaultWithWFTAndWf(t *testing.T) {
 		assert.Contains(woc.execWf.Spec.Arguments.Parameters, param)
 		assert.Contains(woc.wf.Status.StoredWorkflowSpec.Arguments.Artifacts, art)
 	})
-
 }

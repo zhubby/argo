@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,7 +21,6 @@ func contains(s []string, e string) bool {
 }
 
 func ValidateArgoYamlRecursively(fromPath string, skipFileNames []string) (map[string][]string, error) {
-
 	schemaBytes, err := ioutil.ReadFile("../api/jsonschema/schema.json")
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func ValidateArgoYamlRecursively(fromPath string, skipFileNames []string) (map[s
 			return err
 		}
 		if contains(skipFileNames, info.Name()) {
-			//fmt.Printf("skipping %+v \n", info.Name())
+			// fmt.Printf("skipping %+v \n", info.Name())
 			return filepath.SkipDir
 		}
 		if info.IsDir() {
@@ -64,7 +64,7 @@ func ValidateArgoYamlRecursively(fromPath string, skipFileNames []string) (map[s
 		if !result.Valid() {
 			errorDescriptions := []string{}
 			for _, err := range result.Errors() {
-				errorDescriptions = append(errorDescriptions, err.Description())
+				errorDescriptions = append(errorDescriptions, fmt.Sprintf("%s in %s", err.Description(), err.Context().String()))
 			}
 			failed[path] = errorDescriptions
 		}

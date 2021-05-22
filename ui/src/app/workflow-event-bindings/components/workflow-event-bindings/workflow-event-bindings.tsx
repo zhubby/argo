@@ -16,6 +16,8 @@ import {Context} from '../../../shared/context';
 import {Footnote} from '../../../shared/footnote';
 import {historyUrl} from '../../../shared/history';
 import {services} from '../../../shared/services';
+import {useQueryParams} from '../../../shared/use-query-params';
+import {Utils} from '../../../shared/utils';
 import {ID} from './id';
 
 const introductionText = (
@@ -24,7 +26,7 @@ const introductionText = (
         from a remote system.
     </>
 );
-const learnMore = <a href={'https://argoproj.github.io/argo/events/'}>Learn more</a>;
+const learnMore = <a href={'https://argoproj.github.io/argo-workflows/events/'}>Learn more</a>;
 
 export const WorkflowEventBindings = ({match, location, history}: RouteComponentProps<any>) => {
     // boiler-plate
@@ -32,12 +34,20 @@ export const WorkflowEventBindings = ({match, location, history}: RouteComponent
     const queryParams = new URLSearchParams(location.search);
 
     // state for URL and query parameters
-    const [namespace, setNamespace] = useState(match.params.namespace || '');
+    const [namespace, setNamespace] = useState(Utils.getNamespace(match.params.namespace) || '');
     const [selectedWorkflowEventBinding, setSelectedWorkflowEventBinding] = useState(queryParams.get('selectedWorkflowEventBinding'));
+
+    useEffect(
+        useQueryParams(history, p => {
+            setSelectedWorkflowEventBinding(p.get('selectedWorkflowEventBinding'));
+        }),
+        [history]
+    );
+
     useEffect(
         () =>
             history.push(
-                historyUrl('workflow-event-bindings/{namespace}', {
+                historyUrl('workflow-event-bindings' + (Utils.managedNamespace ? '' : '/{namespace}'), {
                     namespace,
                     selectedWorkflowEventBinding
                 })

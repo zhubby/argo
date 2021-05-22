@@ -1,10 +1,10 @@
 ## argo server
 
-Start the Argo Server
+start the Argo Server
 
 ### Synopsis
 
-Start the Argo Server
+start the Argo Server
 
 ```
 argo server [flags]
@@ -14,14 +14,14 @@ argo server [flags]
 
 ```
 
-See https://argoproj.github.io/argo/argo-server.md
+See https://argoproj.github.io/argo-workflows/argo-server.md
 ```
 
 ### Options
 
 ```
       --access-control-allow-origin string   Set Access-Control-Allow-Origin header in HTTP responses.
-      --auth-mode stringArray                API server authentication mode. Any 1 or more length permutation of: client,server,sso (default [server])
+      --auth-mode stringArray                API server authentication mode. Any 1 or more length permutation of: client,server,sso (default [client])
       --basehref string                      Value for base href in index.html. Used if the server is running behind reverse proxy under subpath different from /. Defaults to the environment variable BASE_HREF. (default "/")
   -b, --browser                              enable automatic launching of the browser [local mode]
       --configmap string                     Name of K8s configmap to retrieve workflow controller configuration (default "workflow-controller-configmap")
@@ -29,6 +29,7 @@ See https://argoproj.github.io/argo/argo-server.md
       --event-worker-count int               how many event workers to run (default 4)
   -h, --help                                 help for server
       --hsts                                 Whether or not we should add a HTTP Secure Transport Security header. This only has effect if secure is enabled. (default true)
+      --log-format string                    The formatter to use for logs. One of: text|json (default "text")
       --managed-namespace string             namespace that watches, default to the installation namespace
       --namespaced                           run as namespaced mode
   -p, --port int                             Port to listen on (default 2746)
@@ -57,7 +58,7 @@ See https://argoproj.github.io/argo/argo-server.md
   -n, --namespace string               If present, the namespace scope for this CLI request
       --password string                Password for basic authentication to the API server
       --request-timeout string         The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests. (default "0")
-  -e, --secure                         Whether or not the server is using TLS with the Argo Server. Defaults to the ARGO_SECURE environment variable.
+  -e, --secure                         Whether or not the server is using TLS with the Argo Server. Defaults to the ARGO_SECURE environment variable. (default true)
       --server string                  The address and port of the Kubernetes API server
       --tls-server-name string         If provided, this name will be used to validate server certificate. If this is not provided, hostname used to contact the server is used.
       --token string                   Bearer token for authentication to the API server

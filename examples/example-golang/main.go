@@ -14,29 +14,27 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/pointer"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	wfclientset "github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	wfclientset "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
 )
 
-var (
-	helloWorldWorkflow = wfv1.Workflow{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "hello-world-",
-		},
-		Spec: wfv1.WorkflowSpec{
-			Entrypoint: "whalesay",
-			Templates: []wfv1.Template{
-				{
-					Name: "whalesay",
-					Container: &corev1.Container{
-						Image:   "docker/whalesay:latest",
-						Command: []string{"cowsay", "hello world"},
-					},
+var helloWorldWorkflow = wfv1.Workflow{
+	ObjectMeta: metav1.ObjectMeta{
+		GenerateName: "hello-world-",
+	},
+	Spec: wfv1.WorkflowSpec{
+		Entrypoint: "whalesay",
+		Templates: []wfv1.Template{
+			{
+				Name: "whalesay",
+				Container: &corev1.Container{
+					Image:   "docker/whalesay:latest",
+					Command: []string{"cowsay", "hello world"},
 				},
 			},
 		},
-	}
-)
+	},
+}
 
 func main() {
 	// get current user to determine home directory

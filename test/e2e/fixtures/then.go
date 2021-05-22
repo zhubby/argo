@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -12,9 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/workflow/hydrator"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/workflow/hydrator"
 )
 
 type Then struct {
@@ -29,6 +30,10 @@ type Then struct {
 
 func (t *Then) ExpectWorkflow(block func(t *testing.T, metadata *metav1.ObjectMeta, status *wfv1.WorkflowStatus)) *Then {
 	t.t.Helper()
+	if t.wf == nil {
+		t.t.Error("workflows is nil")
+		return t
+	}
 	return t.expectWorkflow(t.wf.Name, block)
 }
 
@@ -42,7 +47,7 @@ func (t *Then) expectWorkflow(workflowName string, block func(t *testing.T, meta
 	if workflowName == "" {
 		t.t.Fatal("No workflow to test")
 	}
-	println("Checking expectation", workflowName)
+	_, _ = fmt.Println("Checking expectation", workflowName)
 
 	ctx := context.Background()
 	wf, err := t.client.Get(ctx, workflowName, metav1.GetOptions{})
@@ -53,11 +58,8 @@ func (t *Then) expectWorkflow(workflowName string, block func(t *testing.T, meta
 	if err != nil {
 		t.t.Fatal(err)
 	}
-	println(wf.Name, ":", wf.Status.Phase, wf.Status.Message)
+	_, _ = fmt.Println(wf.Name, ":", wf.Status.Phase, wf.Status.Message)
 	block(t.t, &wf.ObjectMeta, &wf.Status)
-	if t.t.Failed() {
-		t.t.FailNow()
-	}
 	return t
 }
 
@@ -65,7 +67,7 @@ func (t *Then) ExpectWorkflowDeleted() *Then {
 	ctx := context.Background()
 	_, err := t.client.Get(ctx, t.wf.Name, metav1.GetOptions{})
 	if err == nil || !apierr.IsNotFound(err) {
-		t.t.Fatalf("expected workflow to be deleted: %v", err)
+		t.t.Errorf("expected workflow to be deleted: %v", err)
 	}
 	return t
 }
@@ -78,20 +80,20 @@ func (t *Then) ExpectWorkflowNode(selector func(status wfv1.NodeStatus) bool, f 
 		n := status.Nodes.Find(selector)
 		var p *apiv1.Pod
 		if n != nil {
-			println("Found node", "id="+n.ID, "type="+n.Type)
+			_, _ = fmt.Println("Found node", "id="+n.ID, "type="+n.Type)
 			if n.Type == wfv1.NodeTypePod {
 				var err error
 				ctx := context.Background()
 				p, err = t.kubeClient.CoreV1().Pods(t.wf.Namespace).Get(ctx, n.ID, metav1.GetOptions{})
 				if err != nil {
 					if !apierr.IsNotFound(err) {
-						t.t.Fatal(err)
+						t.t.Error(err)
 					}
 					p = nil // i did not expect to need to nil the pod, but here we are
 				}
 			}
 		} else {
-			println("Did not find node")
+			_, _ = fmt.Println("Did not find node")
 		}
 		f(tt, n, p)
 	})
@@ -102,7 +104,7 @@ func (t *Then) ExpectCron(block func(t *testing.T, cronWf *wfv1.CronWorkflow)) *
 	if t.cronWf == nil {
 		t.t.Fatal("No cron workflow to test")
 	}
-	println("Checking cron expectation")
+	_, _ = fmt.Println("Checking cron expectation")
 
 	ctx := context.Background()
 	cronWf, err := t.cronClient.Get(ctx, t.cronWf.Name, metav1.GetOptions{})
@@ -110,26 +112,20 @@ func (t *Then) ExpectCron(block func(t *testing.T, cronWf *wfv1.CronWorkflow)) *
 		t.t.Fatal(err)
 	}
 	block(t.t, cronWf)
-	if t.t.Failed() {
-		t.t.FailNow()
-	}
 	return t
 }
 
 func (t *Then) ExpectWorkflowList(listOptions metav1.ListOptions, block func(t *testing.T, wfList *wfv1.WorkflowList)) *Then {
 	t.t.Helper()
-	println("Listing workflows")
+	_, _ = fmt.Println("Listing workflows")
 
 	ctx := context.Background()
 	wfList, err := t.client.List(ctx, listOptions)
 	if err != nil {
 		t.t.Fatal(err)
 	}
-	println("Checking expectation")
+	_, _ = fmt.Println("Checking expectation")
 	block(t.t, wfList)
-	if t.t.Failed() {
-		t.t.FailNow()
-	}
 	return t
 }
 
@@ -159,22 +155,21 @@ func (t *Then) ExpectAuditEvents(filter func(event apiv1.Event) bool, num int, b
 	for num > len(events) {
 		select {
 		case <-ticker.C:
-			t.t.Fatal("timeout waiting for events")
+			t.t.Error("timeout waiting for events")
+			return t
 		case event := <-eventList.ResultChan():
 			e, ok := event.Object.(*apiv1.Event)
 			if !ok {
-				t.t.Fatalf("event is not an event: %v", reflect.TypeOf(e).String())
+				t.t.Errorf("event is not an event: %v", reflect.TypeOf(e).String())
+				return t
 			}
 			if filter(*e) {
-				println("event", e.InvolvedObject.Kind+"/"+e.InvolvedObject.Name, e.Reason)
+				_, _ = fmt.Println("event", e.InvolvedObject.Kind+"/"+e.InvolvedObject.Name, e.Reason)
 				events = append(events, *e)
 			}
 		}
 	}
 	block(t.t, events)
-	if t.t.Failed() {
-		t.t.FailNow()
-	}
 	return t
 }
 
@@ -182,9 +177,6 @@ func (t *Then) RunCli(args []string, block func(t *testing.T, output string, err
 	t.t.Helper()
 	output, err := Exec("../../dist/argo", append([]string{"-n", Namespace}, args...)...)
 	block(t.t, output, err)
-	if t.t.Failed() {
-		t.t.FailNow()
-	}
 	return t
 }
 

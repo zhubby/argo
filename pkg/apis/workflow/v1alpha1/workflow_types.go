@@ -15,9 +15,10 @@ import (
 	policyv1beta "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/argoproj/argo/v3/util/slice"
+	"github.com/argoproj/argo-workflows/v3/util/slice"
 )
 
 // TemplateType is the type of a template
@@ -25,13 +26,15 @@ type TemplateType string
 
 // Possible template types
 const (
-	TemplateTypeContainer TemplateType = "Container"
-	TemplateTypeSteps     TemplateType = "Steps"
-	TemplateTypeScript    TemplateType = "Script"
-	TemplateTypeResource  TemplateType = "Resource"
-	TemplateTypeDAG       TemplateType = "DAG"
-	TemplateTypeSuspend   TemplateType = "Suspend"
-	TemplateTypeUnknown   TemplateType = "Unknown"
+	TemplateTypeContainer    TemplateType = "Container"
+	TemplateTypeContainerSet TemplateType = "ContainerSet"
+	TemplateTypeSteps        TemplateType = "Steps"
+	TemplateTypeScript       TemplateType = "Script"
+	TemplateTypeResource     TemplateType = "Resource"
+	TemplateTypeDAG          TemplateType = "DAG"
+	TemplateTypeSuspend      TemplateType = "Suspend"
+	TemplateTypeData         TemplateType = "Data"
+	TemplateTypeUnknown      TemplateType = "Unknown"
 )
 
 // NodePhase is a label for the condition of a node at the current time.
@@ -61,6 +64,7 @@ type NodeType string
 // Node types
 const (
 	NodeTypePod       NodeType = "Pod"
+	NodeTypeContainer NodeType = "Container"
 	NodeTypeSteps     NodeType = "Steps"
 	NodeTypeStepGroup NodeType = "StepGroup"
 	NodeTypeDAG       NodeType = "DAG"
@@ -138,14 +142,14 @@ func (w Workflows) Filter(predicate WorkflowPredicate) Workflows {
 }
 
 // GetTTLStrategy return TTLStrategy based on Order of precedence:
-//1. Workflow, 2. WorkflowTemplate, 3. Workflowdefault
+// 1. Workflow, 2. WorkflowTemplate, 3. Workflowdefault
 func (w *Workflow) GetTTLStrategy() *TTLStrategy {
 	var ttlStrategy *TTLStrategy
 	// TTLStrategy from WorkflowTemplate
 	if w.Status.StoredWorkflowSpec != nil && w.Status.StoredWorkflowSpec.GetTTLStrategy() != nil {
 		ttlStrategy = w.Status.StoredWorkflowSpec.GetTTLStrategy()
 	}
-	//TTLStrategy from Workflow
+	// TTLStrategy from Workflow
 	if w.Spec.GetTTLStrategy() != nil {
 		ttlStrategy = w.Spec.GetTTLStrategy()
 	}
@@ -278,14 +282,6 @@ type WorkflowSpec struct {
 	// primary workflow.
 	OnExit string `json:"onExit,omitempty" protobuf:"bytes,17,opt,name=onExit"`
 
-	// TTLSecondsAfterFinished limits the lifetime of a Workflow that has finished execution
-	// (Succeeded, Failed, Error). If this field is set, once the Workflow finishes, it will be
-	// deleted after ttlSecondsAfterFinished expires. If this field is unset,
-	// ttlSecondsAfterFinished will not expire. If this field is set to zero,
-	// ttlSecondsAfterFinished expires immediately after the Workflow finishes.
-	// DEPRECATED: Use TTLStrategy.SecondsAfterCompletion instead.
-	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty" protobuf:"bytes,18,opt,name=ttlSecondsAfterFinished"`
-
 	// TTLStrategy limits the lifetime of a Workflow that has finished execution depending on if it
 	// Succeeded or Failed. If this struct is set, once the Workflow finishes, it will be
 	// deleted after the time to live expires. If this field is unset,
@@ -328,9 +324,9 @@ type WorkflowSpec struct {
 	// container fields which are not strings (e.g. resource limits).
 	PodSpecPatch string `json:"podSpecPatch,omitempty" protobuf:"bytes,27,opt,name=podSpecPatch"`
 
-	//PodDisruptionBudget holds the number of concurrent disruptions that you allow for Workflow's Pods.
-	//Controller will automatically add the selector with workflow name, if selector is empty.
-	//Optional: Defaults to empty.
+	// PodDisruptionBudget holds the number of concurrent disruptions that you allow for Workflow's Pods.
+	// Controller will automatically add the selector with workflow name, if selector is empty.
+	// Optional: Defaults to empty.
 	// +optional
 	PodDisruptionBudget *policyv1beta.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty" protobuf:"bytes,31,opt,name=podDisruptionBudget"`
 
@@ -351,6 +347,12 @@ type WorkflowSpec struct {
 
 	// RetryStrategy for all templates in the workflow.
 	RetryStrategy *RetryStrategy `json:"retryStrategy,omitempty" protobuf:"bytes,37,opt,name=retryStrategy"`
+
+	// PodMetadata defines additional metadata that should be applied to workflow pods
+	PodMetadata *Metadata `json:"podMetadata,omitempty" protobuf:"bytes,38,opt,name=podMetadata"`
+
+	// TemplateDefaults holds default template values that will apply to all templates in the Workflow, unless overridden on the template-level
+	TemplateDefaults *Template `json:"templateDefaults,omitempty" protobuf:"bytes,39,opt,name=templateDefaults"`
 }
 
 // GetVolumeClaimGC returns the VolumeClaimGC that was defined in the workflow spec.  If none was provided, a default value is returned.
@@ -365,14 +367,6 @@ func (wfs WorkflowSpec) GetVolumeClaimGC() *VolumeClaimGC {
 }
 
 func (wfs WorkflowSpec) GetTTLStrategy() *TTLStrategy {
-	if wfs.TTLSecondsAfterFinished != nil {
-		if wfs.TTLStrategy == nil {
-			ttlstrategy := TTLStrategy{SecondsAfterCompletion: wfs.TTLSecondsAfterFinished}
-			wfs.TTLStrategy = &ttlstrategy
-		} else if wfs.TTLStrategy.SecondsAfterCompletion == nil {
-			wfs.TTLStrategy.SecondsAfterCompletion = wfs.TTLSecondsAfterFinished
-		}
-	}
 	return wfs.TTLStrategy
 }
 
@@ -421,7 +415,12 @@ type ShutdownStrategy string
 const (
 	ShutdownStrategyTerminate ShutdownStrategy = "Terminate"
 	ShutdownStrategyStop      ShutdownStrategy = "Stop"
+	ShutdownStrategyNone      ShutdownStrategy = ""
 )
+
+func (s ShutdownStrategy) Enabled() bool {
+	return s != ShutdownStrategyNone
+}
 
 func (s ShutdownStrategy) ShouldExecute(isOnExitPod bool) bool {
 	switch s {
@@ -493,19 +492,7 @@ func (wfs *WorkflowSpec) HasPodSpecPatch() bool {
 // Template is a reusable and composable unit of execution in a workflow
 type Template struct {
 	// Name is the name of the template
-	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-
-	// Template is the name of the template which is used as the base of this template.
-	// DEPRECATED: This field is not used.
-	Template string `json:"template,omitempty" protobuf:"bytes,2,opt,name=template"`
-
-	// Arguments hold arguments to the template.
-	// DEPRECATED: This field is not used.
-	Arguments Arguments `json:"arguments,omitempty" protobuf:"bytes,3,opt,name=arguments"`
-
-	// TemplateRef is the reference to the template resource which is used as the base of this template.
-	// DEPRECATED: This field is not used.
-	TemplateRef *TemplateRef `json:"templateRef,omitempty" protobuf:"bytes,4,opt,name=templateRef"`
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 
 	// Inputs describe what inputs parameters and artifacts are supplied to this template
 	Inputs Inputs `json:"inputs,omitempty" protobuf:"bytes,5,opt,name=inputs"`
@@ -533,6 +520,9 @@ type Template struct {
 	// Container is the main container image to run in the pod
 	Container *apiv1.Container `json:"container,omitempty" protobuf:"bytes,12,opt,name=container"`
 
+	// ContainerSet groups multiple containers within a single pod.
+	ContainerSet *ContainerSetTemplate `json:"containerSet,omitempty" protobuf:"bytes,40,opt,name=containerSet"`
+
 	// Script runs a portion of code against an interpreter
 	Script *ScriptTemplate `json:"script,omitempty" protobuf:"bytes,13,opt,name=script"`
 
@@ -544,6 +534,9 @@ type Template struct {
 
 	// Suspend template subtype which can suspend a workflow when reaching the step
 	Suspend *SuspendTemplate `json:"suspend,omitempty" protobuf:"bytes,16,opt,name=suspend"`
+
+	// Data is a data template
+	Data *Data `json:"data,omitempty" protobuf:"bytes,39,opt,name=data"`
 
 	// Volumes is a list of volumes that can be mounted by containers in a template.
 	// +patchStrategy=merge
@@ -579,6 +572,10 @@ type Template struct {
 	// boundaries of this template invocation. If additional steps/dag templates are invoked, the
 	// pods created by those templates will not be counted towards this total.
 	Parallelism *int64 `json:"parallelism,omitempty" protobuf:"bytes,23,opt,name=parallelism"`
+
+	// FailFast, if specified, will fail this template if any of its child pods has failed. This is useful for when this
+	// template is expanded with `withItems`, etc.
+	FailFast *bool `json:"failFast,omitempty" protobuf:"varint,41,opt,name=failFast"`
 
 	// Tolerations to apply to workflow pods.
 	// +patchStrategy=merge
@@ -635,21 +632,34 @@ type Template struct {
 	Timeout string `json:"timeout,omitempty" protobuf:"bytes,38,opt,name=timeout"`
 }
 
-// DEPRECATED: Templates should not be used as TemplateReferenceHolder
-var _ TemplateReferenceHolder = &Template{}
-
-// DEPRECATED: Templates should not be used as TemplateReferenceHolder
-func (tmpl *Template) GetTemplateName() string {
-	if tmpl.Template != "" {
-		return tmpl.Template
-	} else {
-		return tmpl.Name
+// SetType will set the template object based on template type.
+func (tmpl *Template) SetType(tmplType TemplateType) {
+	switch tmplType {
+	case TemplateTypeSteps:
+		tmpl.setTemplateObjs(tmpl.Steps, nil, nil, nil, nil, nil, nil)
+	case TemplateTypeDAG:
+		tmpl.setTemplateObjs(nil, tmpl.DAG, nil, nil, nil, nil, nil)
+	case TemplateTypeContainer:
+		tmpl.setTemplateObjs(nil, nil, tmpl.Container, nil, nil, nil, nil)
+	case TemplateTypeScript:
+		tmpl.setTemplateObjs(nil, nil, nil, tmpl.Script, nil, nil, nil)
+	case TemplateTypeResource:
+		tmpl.setTemplateObjs(nil, nil, nil, nil, tmpl.Resource, nil, nil)
+	case TemplateTypeData:
+		tmpl.setTemplateObjs(nil, nil, nil, nil, nil, tmpl.Data, nil)
+	case TemplateTypeSuspend:
+		tmpl.setTemplateObjs(nil, nil, nil, nil, nil, nil, tmpl.Suspend)
 	}
 }
 
-// DEPRECATED: Templates should not be used as TemplateReferenceHolder
-func (tmpl *Template) GetTemplateRef() *TemplateRef {
-	return tmpl.TemplateRef
+func (tmpl *Template) setTemplateObjs(steps []ParallelSteps, dag *DAGTemplate, container *apiv1.Container, script *ScriptTemplate, resource *ResourceTemplate, data *Data, suspend *SuspendTemplate) {
+	tmpl.Steps = steps
+	tmpl.DAG = dag
+	tmpl.Container = container
+	tmpl.Script = script
+	tmpl.Resource = resource
+	tmpl.Data = data
+	tmpl.Suspend = suspend
 }
 
 // GetBaseTemplate returns a base template content.
@@ -661,6 +671,22 @@ func (tmpl *Template) GetBaseTemplate() *Template {
 
 func (tmpl *Template) HasPodSpecPatch() bool {
 	return tmpl.PodSpecPatch != ""
+}
+
+func (tmpl *Template) GetSidecarNames() []string {
+	var containerNames []string
+	for _, s := range tmpl.Sidecars {
+		containerNames = append(containerNames, s.Name)
+	}
+	return containerNames
+}
+
+func (tmpl *Template) IsFailFast() bool {
+	return tmpl.FailFast != nil && *tmpl.FailFast
+}
+
+func (tmpl *Template) HasParallelism() bool {
+	return tmpl.Parallelism != nil && *tmpl.Parallelism > 0
 }
 
 type Artifacts []Artifact
@@ -743,11 +769,13 @@ type ValueFrom struct {
 
 	// Default specifies a value to be used if retrieving the value from the specified source fails
 	Default *AnyString `json:"default,omitempty" protobuf:"bytes,5,opt,name=default"`
+
+	// Expression, if defined, is evaluated to specify the value for the parameter
+	Expression string `json:"expression,omitempty" protobuf:"bytes,8,rep,name=expression"`
 }
 
 // SuppliedValueFrom is a placeholder for a value to be filled in directly, either through the CLI, API, etc.
-type SuppliedValueFrom struct {
-}
+type SuppliedValueFrom struct{}
 
 // Artifact indicates an artifact to place at a specified path
 type Artifact struct {
@@ -782,12 +810,37 @@ type Artifact struct {
 
 	// If mode is set, apply the permission recursively into the artifact if it is a folder
 	RecurseMode bool `json:"recurseMode,omitempty" protobuf:"varint,10,opt,name=recurseMode"`
+
+	// FromExpression, if defined, is evaluated to specify the value for the artifact
+	FromExpression string `json:"fromExpression,omitempty" protobuf:"bytes,11,opt,name=fromExpression"`
 }
 
 // PodGC describes how to delete completed pods as they complete
 type PodGC struct {
 	// Strategy is the strategy to use. One of "OnPodCompletion", "OnPodSuccess", "OnWorkflowCompletion", "OnWorkflowSuccess"
 	Strategy PodGCStrategy `json:"strategy,omitempty" protobuf:"bytes,1,opt,name=strategy,casttype=PodGCStrategy"`
+	// LabelSelector is the label selector to check if the pods match the labels before being added to the pod GC queue.
+	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty" protobuf:"bytes,2,opt,name=labelSelector"`
+}
+
+// Matches returns whether the pod labels match with the label selector specified in podGC.
+func (podGC *PodGC) Matches(labels labels.Set) (bool, error) {
+	if podGC == nil {
+		return true, nil
+	}
+	selector, err := metav1.LabelSelectorAsSelector(podGC.LabelSelector)
+	if err != nil {
+		return false, err
+	}
+	return selector.Matches(labels), nil
+}
+
+// GetLabelSelector gets the label selector from podGC.
+func (podGC *PodGC) GetLabelSelector() *metav1.LabelSelector {
+	if podGC != nil && podGC.LabelSelector != nil {
+		return podGC.LabelSelector
+	}
+	return nil
 }
 
 // VolumeClaimGC describes how to delete volumes from completed Workflows
@@ -832,8 +885,6 @@ type ArtifactLocationType interface {
 	GetKey() (string, error)
 	SetKey(key string) error
 }
-
-var keyUnsupportedErr = fmt.Errorf("key unsupported")
 
 // ArtifactLocation describes a location for a single or multiple artifacts.
 // It is used as single artifact in the context of inputs/outputs (e.g. outputs.artifacts.artname).
@@ -929,7 +980,7 @@ func (a *ArtifactLocation) HasKey() bool {
 func (a *ArtifactLocation) SetKey(key string) error {
 	v := a.Get()
 	if v == nil {
-		return keyUnsupportedErr
+		return fmt.Errorf("key unsupported: cannot set key for artifact location because it is invalid")
 	}
 	return v.SetKey(key)
 }
@@ -973,7 +1024,7 @@ func (a *ArtifactLocation) IsArchiveLogs() bool {
 func (a *ArtifactLocation) GetKey() (string, error) {
 	v := a.Get()
 	if v == nil {
-		return "", keyUnsupportedErr
+		return "", fmt.Errorf("key unsupported: cannot get key for artifact location, because it is invalid")
 	}
 	return v.GetKey()
 }
@@ -1081,10 +1132,58 @@ type WorkflowStep struct {
 	// OnExit is a template reference which is invoked at the end of the
 	// template, irrespective of the success, failure, or error of the
 	// primary template.
+	// DEPRECATED: Use Hooks[exit].Template instead.
 	OnExit string `json:"onExit,omitempty" protobuf:"bytes,11,opt,name=onExit"`
+
+	// Hooks holds the lifecycle hook which is invoked at lifecycle of
+	// step, irrespective of the success, failure, or error status of the primary step
+	Hooks LifecycleHooks `json:"hooks,omitempty" protobuf:"bytes,12,opt,name=hooks"`
+}
+
+type LifecycleEvent string
+
+const (
+	ExitLifecycleEvent = "exit"
+)
+
+type LifecycleHooks map[LifecycleEvent]LifecycleHook
+
+func (lchs LifecycleHooks) GetExitHook() *LifecycleHook {
+	hook, ok := lchs[ExitLifecycleEvent]
+	if ok {
+		return &hook
+	}
+	return nil
+}
+
+type LifecycleHook struct {
+	Template  string    `json:"template," protobuf:"bytes,1,opt,name=template"`
+	Arguments Arguments `json:"arguments,omitempty" protobuf:"bytes,2,opt,name=arguments"`
+}
+
+func (lch *LifecycleHook) WithArgs(args Arguments) *LifecycleHook {
+	lch1 := lch.DeepCopy()
+	if lch1.Arguments.IsEmpty() {
+		lch1.Arguments = args
+	}
+	return lch1
 }
 
 var _ TemplateReferenceHolder = &WorkflowStep{}
+
+func (step *WorkflowStep) HasExitHook() bool {
+	return (step.Hooks != nil && step.Hooks.GetExitHook() != nil) || step.OnExit != ""
+}
+
+func (step *WorkflowStep) GetExitHook(args Arguments) *LifecycleHook {
+	if !step.HasExitHook() {
+		return nil
+	}
+	if step.OnExit != "" {
+		return &LifecycleHook{Template: step.OnExit, Arguments: args}
+	}
+	return step.Hooks.GetExitHook().WithArgs(args)
+}
 
 func (step *WorkflowStep) GetTemplateName() string {
 	return step.Template
@@ -1119,10 +1218,6 @@ type TemplateRef struct {
 	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 	// Template is the name of referred template in the resource.
 	Template string `json:"template,omitempty" protobuf:"bytes,2,opt,name=template"`
-	// RuntimeResolution skips validation at creation time.
-	// By enabling this option, you can create the referred workflow template before the actual runtime.
-	// DEPRECATED: This value is not used anymore and is ignored
-	RuntimeResolution bool `json:"runtimeResolution,omitempty" protobuf:"varint,3,opt,name=runtimeResolution"`
 	// ClusterScope indicates the referred template is cluster scoped (i.e. a ClusterWorkflowTemplate).
 	ClusterScope bool `json:"clusterScope,omitempty" protobuf:"varint,4,opt,name=clusterScope"`
 }
@@ -1244,7 +1339,7 @@ func SucceededPodNode(n NodeStatus) bool {
 
 // Children returns the children of the parent.
 func (s Nodes) Children(parentNodeId string) Nodes {
-	var childNodes = make(Nodes)
+	childNodes := make(Nodes)
 	parentNode, ok := s[parentNodeId]
 	if !ok {
 		return childNodes
@@ -1259,7 +1354,7 @@ func (s Nodes) Children(parentNodeId string) Nodes {
 
 // Filter returns the subset of the nodes that match the predicate, e.g. only failed nodes
 func (s Nodes) Filter(predicate func(NodeStatus) bool) Nodes {
-	var filteredNodes = make(Nodes)
+	filteredNodes := make(Nodes)
 	for _, node := range s {
 		if predicate(node) {
 			filteredNodes[node.ID] = node
@@ -1270,7 +1365,7 @@ func (s Nodes) Filter(predicate func(NodeStatus) bool) Nodes {
 
 // Map maps the nodes to new values, e.g. `x.Hostname`
 func (s Nodes) Map(f func(x NodeStatus) interface{}) map[string]interface{} {
-	var values = make(map[string]interface{})
+	values := make(map[string]interface{})
 	for _, node := range s {
 		values[node.ID] = f(node)
 	}
@@ -1359,9 +1454,10 @@ func (wf *Workflow) GetOffloadNodeStatusVersion() string {
 type RetryPolicy string
 
 const (
-	RetryPolicyAlways    RetryPolicy = "Always"
-	RetryPolicyOnFailure RetryPolicy = "OnFailure"
-	RetryPolicyOnError   RetryPolicy = "OnError"
+	RetryPolicyAlways           RetryPolicy = "Always"
+	RetryPolicyOnFailure        RetryPolicy = "OnFailure"
+	RetryPolicyOnError          RetryPolicy = "OnError"
+	RetryPolicyOnTransientError RetryPolicy = "OnTransientError"
 )
 
 // Backoff is a backoff strategy to use within retryStrategy
@@ -1376,8 +1472,7 @@ type Backoff struct {
 
 // RetryNodeAntiAffinity is a placeholder for future expansion, only empty nodeAntiAffinity is allowed.
 // In order to prevent running steps on the same host, it uses "kubernetes.io/hostname".
-type RetryNodeAntiAffinity struct {
-}
+type RetryNodeAntiAffinity struct{}
 
 // RetryAffinity prevents running steps on the same host.
 type RetryAffinity struct {
@@ -1556,14 +1651,6 @@ type NodeStatus struct {
 	// TemplateRef is the reference to the template resource which this node corresponds to.
 	// Not applicable to virtual nodes (e.g. Retry, StepGroup)
 	TemplateRef *TemplateRef `json:"templateRef,omitempty" protobuf:"bytes,6,opt,name=templateRef"`
-
-	// StoredTemplateID is the ID of stored template.
-	// DEPRECATED: This value is not used anymore.
-	StoredTemplateID string `json:"storedTemplateID,omitempty" protobuf:"bytes,18,opt,name=storedTemplateID"`
-
-	// WorkflowTemplateName is the WorkflowTemplate resource name on which the resolved template of this node is retrieved.
-	// DEPRECATED: This value is not used anymore.
-	WorkflowTemplateName string `json:"workflowTemplateName,omitempty" protobuf:"bytes,19,opt,name=workflowTemplateName"`
 
 	// TemplateScope is the template scope in which the template of this node was retrieved.
 	TemplateScope string `json:"templateScope,omitempty" protobuf:"bytes,20,opt,name=templateScope"`
@@ -1765,6 +1852,15 @@ func (n NodeStatus) GetDuration() time.Duration {
 	return n.FinishedAt.Sub(n.StartedAt.Time)
 }
 
+func (n NodeStatus) HasChild(childID string) bool {
+	for _, nodeID := range n.Children {
+		if childID == nodeID {
+			return true
+		}
+	}
+	return false
+}
+
 // S3Bucket contains the access information required for interfacing with an S3 bucket
 type S3Bucket struct {
 	// Endpoint is the hostname of the bucket endpoint
@@ -1806,7 +1902,7 @@ type S3Artifact struct {
 	S3Bucket `json:",inline" protobuf:"bytes,1,opt,name=s3Bucket"`
 
 	// Key is the key in the bucket where the artifact resides
-	Key string `json:"key" protobuf:"bytes,2,opt,name=key"`
+	Key string `json:"key,omitempty" protobuf:"bytes,2,opt,name=key"`
 }
 
 func (s *S3Artifact) GetKey() (string, error) {
@@ -1848,6 +1944,9 @@ type GitArtifact struct {
 
 	// InsecureIgnoreHostKey disables SSH strict host key checking during git clone
 	InsecureIgnoreHostKey bool `json:"insecureIgnoreHostKey,omitempty" protobuf:"varint,8,opt,name=insecureIgnoreHostKey"`
+
+	// DisableSubmodules disables submodules during git clone
+	DisableSubmodules bool `json:"disableSubmodules,omitempty" protobuf:"varint,9,opt,name=disableSubmodules"`
 }
 
 func (g *GitArtifact) HasLocation() bool {
@@ -1855,11 +1954,11 @@ func (g *GitArtifact) HasLocation() bool {
 }
 
 func (g *GitArtifact) GetKey() (string, error) {
-	return "", keyUnsupportedErr
+	return "", fmt.Errorf("key unsupported: git artifact does not have a key")
 }
 
 func (g *GitArtifact) SetKey(string) error {
-	return keyUnsupportedErr
+	return fmt.Errorf("key unsupported: cannot set key on git artifact")
 }
 
 func (g *GitArtifact) GetDepth() int {
@@ -1907,7 +2006,7 @@ func (a *ArtifactoryArtifact) SetKey(key string) error {
 }
 
 func (a *ArtifactoryArtifact) HasLocation() bool {
-	return a != nil && a.URL != ""
+	return a != nil && a.URL != "" && a.UsernameSecret != nil
 }
 
 // HDFSArtifact is the location of an HDFS artifact
@@ -1980,11 +2079,11 @@ type RawArtifact struct {
 }
 
 func (r *RawArtifact) GetKey() (string, error) {
-	return "", keyUnsupportedErr
+	return "", fmt.Errorf("key unsupported: raw artifat does not have key")
 }
 
 func (r *RawArtifact) SetKey(string) error {
-	return keyUnsupportedErr
+	return fmt.Errorf("key unsupported: cannot set key for raw artifact")
 }
 
 func (r *RawArtifact) HasLocation() bool {
@@ -2033,7 +2132,6 @@ func (h *HTTPArtifact) HasLocation() bool {
 
 // GCSBucket contains the access information for interfacring with a GCS bucket
 type GCSBucket struct {
-
 	// Bucket is the name of the bucket
 	Bucket string `json:"bucket,omitempty" protobuf:"bytes,1,opt,name=bucket"`
 
@@ -2075,6 +2173,15 @@ type OSSBucket struct {
 
 	// SecretKeySecret is the secret selector to the bucket's secret key
 	SecretKeySecret *apiv1.SecretKeySelector `json:"secretKeySecret,omitempty" protobuf:"bytes,4,opt,name=secretKeySecret"`
+
+	// CreateBucketIfNotPresent tells the driver to attempt to create the OSS bucket for output artifacts, if it doesn't exist
+	CreateBucketIfNotPresent bool `json:"createBucketIfNotPresent,omitempty" protobuf:"varint,5,opt,name=createBucketIfNotPresent"`
+
+	// SecurityToken is the user's temporary security token. For more details, check out: https://www.alibabacloud.com/help/doc-detail/100624.htm
+	SecurityToken string `json:"securityToken,omitempty" protobuf:"bytes,6,opt,name=securityToken"`
+
+	// LifecycleRule specifies how to manage bucket's lifecycle
+	LifecycleRule *OSSLifecycleRule `json:"lifecycleRule,omitempty" protobuf:"bytes,7,opt,name=lifecycleRule"`
 }
 
 // OSSArtifact is the location of an Alibaba Cloud OSS artifact
@@ -2083,6 +2190,15 @@ type OSSArtifact struct {
 
 	// Key is the path in the bucket where the artifact resides
 	Key string `json:"key" protobuf:"bytes,2,opt,name=key"`
+}
+
+// OSSLifecycleRule specifies how to manage bucket's lifecycle
+type OSSLifecycleRule struct {
+	// MarkInfrequentAccessAfterDays is the number of days before we convert the objects in the bucket to Infrequent Access (IA) storage type
+	MarkInfrequentAccessAfterDays int32 `json:"markInfrequentAccessAfterDays,omitempty" protobuf:"varint,1,opt,name=markInfrequentAccessAfterDays"`
+
+	// MarkDeletionAfterDays is the number of days before we delete objects in the bucket
+	MarkDeletionAfterDays int32 `json:"markDeletionAfterDays,omitempty" protobuf:"varint,2,opt,name=markDeletionAfterDays"`
 }
 
 func (o *OSSArtifact) GetKey() (string, error) {
@@ -2149,6 +2265,9 @@ func (tmpl *Template) GetType() TemplateType {
 	if tmpl.Container != nil {
 		return TemplateTypeContainer
 	}
+	if tmpl.ContainerSet != nil {
+		return TemplateTypeContainerSet
+	}
 	if tmpl.Steps != nil {
 		return TemplateTypeSteps
 	}
@@ -2161,6 +2280,9 @@ func (tmpl *Template) GetType() TemplateType {
 	if tmpl.Resource != nil {
 		return TemplateTypeResource
 	}
+	if tmpl.Data != nil {
+		return TemplateTypeData
+	}
 	if tmpl.Suspend != nil {
 		return TemplateTypeSuspend
 	}
@@ -2170,7 +2292,7 @@ func (tmpl *Template) GetType() TemplateType {
 // IsPodType returns whether or not the template is a pod type
 func (tmpl *Template) IsPodType() bool {
 	switch tmpl.GetType() {
-	case TemplateTypeContainer, TemplateTypeScript, TemplateTypeResource:
+	case TemplateTypeContainer, TemplateTypeContainerSet, TemplateTypeScript, TemplateTypeResource, TemplateTypeData:
 		return true
 	}
 	return false
@@ -2179,10 +2301,56 @@ func (tmpl *Template) IsPodType() bool {
 // IsLeaf returns whether or not the template is a leaf
 func (tmpl *Template) IsLeaf() bool {
 	switch tmpl.GetType() {
-	case TemplateTypeContainer, TemplateTypeScript, TemplateTypeResource:
+	case TemplateTypeContainer, TemplateTypeContainerSet, TemplateTypeScript, TemplateTypeResource, TemplateTypeData:
 		return true
 	}
 	return false
+}
+
+func (tmpl *Template) IsMainContainerName(containerName string) bool {
+	for _, c := range tmpl.GetMainContainerNames() {
+		if c == containerName {
+			return true
+		}
+	}
+	return false
+}
+
+func (tmpl *Template) GetMainContainerNames() []string {
+	if tmpl != nil && tmpl.ContainerSet != nil {
+		out := make([]string, 0)
+		for _, c := range tmpl.ContainerSet.GetContainers() {
+			out = append(out, c.Name)
+		}
+		return out
+	} else {
+		return []string{"main"}
+	}
+}
+
+func (tmpl *Template) HasSequencedContainers() bool {
+	return tmpl != nil && tmpl.ContainerSet.HasSequencedContainers()
+}
+
+func (tmpl *Template) GetVolumeMounts() []apiv1.VolumeMount {
+	if tmpl.Container != nil {
+		return tmpl.Container.VolumeMounts
+	} else if tmpl.Script != nil {
+		return tmpl.Script.VolumeMounts
+	} else if tmpl.ContainerSet != nil {
+		return tmpl.ContainerSet.VolumeMounts
+	}
+	return nil
+}
+
+// whether or not the template can and will have outputs (i.e. exit code and result)
+func (tmpl *Template) HasOutput() bool {
+	return tmpl.Container != nil || tmpl.ContainerSet.HasContainerNamed("main") || tmpl.Script != nil || tmpl.Data != nil
+}
+
+// if logs should be saved as an artifact
+func (tmpl *Template) SaveLogsAsArtifact() bool {
+	return tmpl != nil && tmpl.ArchiveLocation.IsArchiveLogs() && (tmpl.ContainerSet == nil || tmpl.ContainerSet.HasContainerNamed("main"))
 }
 
 // DAGTemplate is a template subtype for directed acyclic graph templates
@@ -2200,7 +2368,7 @@ type DAGTemplate struct {
 	// before failing the DAG itself.
 	// The FailFast flag default is true,  if set to false, it will allow a DAG to run all branches of the DAG to
 	// completion (either success or failure), regardless of the failed outcomes of branches in the DAG.
-	// More info and example about this feature at https://github.com/argoproj/argo/issues/1442
+	// More info and example about this feature at https://github.com/argoproj/argo-workflows/issues/1442
 	FailFast *bool `json:"failFast,omitempty" protobuf:"varint,3,opt,name=failFast"`
 }
 
@@ -2241,13 +2409,32 @@ type DAGTask struct {
 	// OnExit is a template reference which is invoked at the end of the
 	// template, irrespective of the success, failure, or error of the
 	// primary template.
+	// DEPRECATED: Use Hooks[exit].Template instead.
 	OnExit string `json:"onExit,omitempty" protobuf:"bytes,11,opt,name=onExit"`
 
 	// Depends are name of other targets which this depends on
 	Depends string `json:"depends,omitempty" protobuf:"bytes,12,opt,name=depends"`
+
+	// Hooks hold the lifecycle hook which is invoked at lifecycle of
+	// task, irrespective of the success, failure, or error status of the primary task
+	Hooks LifecycleHooks `json:"hooks,omitempty" protobuf:"bytes,13,opt,name=hooks"`
 }
 
 var _ TemplateReferenceHolder = &DAGTask{}
+
+func (t *DAGTask) GetExitHook(args Arguments) *LifecycleHook {
+	if !t.HasExitHook() {
+		return nil
+	}
+	if t.OnExit != "" {
+		return &LifecycleHook{Template: t.OnExit, Arguments: args}
+	}
+	return t.Hooks.GetExitHook().WithArgs(args)
+}
+
+func (t *DAGTask) HasExitHook() bool {
+	return (t.Hooks != nil && t.Hooks.GetExitHook() != nil) || t.OnExit != ""
+}
 
 func (t *DAGTask) GetTemplateName() string {
 	return t.Template

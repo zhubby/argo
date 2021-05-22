@@ -2,7 +2,7 @@
 
 .workflow-details {
 
-  overflow-y: scroll;
+  overflow-y: hidden;
 
   &, & > .row {
     height: calc(100vh - 2 * #{$top-bar-height});
@@ -37,13 +37,19 @@
     }
   }
 
+  &__container {
+    height: calc(100vh - 2 * #{$top-bar-height});
+    max-width: 100%;
+    overflow: auto;
+  }
+
   &__graph-container {
     position: relative;
-    overflow: auto;
     height: calc(100vh - 2 * #{$top-bar-height});
     width: 100%;
     transition: width 0.2s;
     float: left;
+    overflow: auto;
 
     .workflow-dag {
       margin: 0;

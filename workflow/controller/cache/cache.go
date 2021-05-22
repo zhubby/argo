@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 )
 
 var cacheKeyRegex = regexp.MustCompile("^[a-zA-Z0-9][-a-zA-Z0-9]*$")
@@ -22,6 +22,7 @@ type Entry struct {
 	NodeID            string        `json:"nodeID"`
 	Outputs           *wfv1.Outputs `json:"outputs"`
 	CreationTimestamp metav1.Time   `json:"creationTimestamp"`
+	LastHitTimestamp  metav1.Time   `json:"lastHitTimestamp"`
 }
 
 func (e *Entry) Hit() bool {

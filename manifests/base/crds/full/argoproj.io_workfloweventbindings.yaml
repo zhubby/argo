@@ -86,6 +86,8 @@ spec:
                               type: object
                             from:
                               type: string
+                            fromExpression:
+                              type: string
                             gcs:
                               properties:
                                 bucket:
@@ -111,6 +113,8 @@ spec:
                                 depth:
                                   format: int64
                                   type: integer
+                                disableSubmodules:
+                                  type: boolean
                                 fetch:
                                   items:
                                     type: string
@@ -254,10 +258,21 @@ spec:
                                   type: object
                                 bucket:
                                   type: string
+                                createBucketIfNotPresent:
+                                  type: boolean
                                 endpoint:
                                   type: string
                                 key:
                                   type: string
+                                lifecycleRule:
+                                  properties:
+                                    markDeletionAfterDays:
+                                      format: int32
+                                      type: integer
+                                    markInfrequentAccessAfterDays:
+                                      format: int32
+                                      type: integer
+                                  type: object
                                 secretKeySecret:
                                   properties:
                                     key:
@@ -269,6 +284,8 @@ spec:
                                   required:
                                   - key
                                   type: object
+                                securityToken:
+                                  type: string
                               required:
                               - key
                               type: object
@@ -326,8 +343,6 @@ spec:
                                   type: object
                                 useSDKCreds:
                                   type: boolean
-                              required:
-                              - key
                               type: object
                             subPath:
                               type: string
@@ -355,6 +370,8 @@ spec:
                                 default:
                                   type: string
                                 event:
+                                  type: string
+                                expression:
                                   type: string
                                 jqFilter:
                                   type: string

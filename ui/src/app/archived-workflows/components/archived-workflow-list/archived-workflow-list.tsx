@@ -14,6 +14,7 @@ import {Timestamp} from '../../../shared/components/timestamp';
 import {ZeroState} from '../../../shared/components/zero-state';
 import {formatDuration, wfDuration} from '../../../shared/duration';
 import {Pagination, parseLimit} from '../../../shared/pagination';
+import {ScopedLocalStorage} from '../../../shared/scoped-local-storage';
 import {services} from '../../../shared/services';
 import {Utils} from '../../../shared/utils';
 import {ArchivedWorkflowFilters} from '../archived-workflow-filters/archived-workflow-filters';
@@ -32,13 +33,23 @@ interface State {
 const defaultPaginationLimit = 10;
 
 export class ArchivedWorkflowList extends BasePage<RouteComponentProps<any>, State> {
+    private storage: ScopedLocalStorage;
+
     constructor(props: RouteComponentProps<any>, context: any) {
         super(props, context);
+        this.storage = new ScopedLocalStorage('ArchiveListOptions');
+        const savedOptions = this.storage.getItem('options', {
+            pagination: {limit: defaultPaginationLimit},
+            selectedPhases: [],
+            selectedLabels: []
+        } as State);
+        const phaseQueryParam = this.queryParams('phase');
+        const labelQueryParam = this.queryParams('label');
         this.state = {
-            pagination: {offset: this.queryParam('offset'), limit: parseLimit(this.queryParam('limit')) || defaultPaginationLimit},
-            namespace: this.props.match.params.namespace || '',
-            selectedPhases: this.queryParams('phase'),
-            selectedLabels: this.queryParams('label'),
+            pagination: {offset: this.queryParam('offset'), limit: parseLimit(this.queryParam('limit')) || savedOptions.pagination.limit},
+            namespace: Utils.getNamespace(this.props.match.params.namespace) || '',
+            selectedPhases: phaseQueryParam.length > 0 ? phaseQueryParam : savedOptions.selectedPhases,
+            selectedLabels: labelQueryParam.length > 0 ? labelQueryParam : savedOptions.selectedLabels,
             minStartedAt: this.parseTime(this.queryParam('minStartedAt')) || this.lastMonth(),
             maxStartedAt: this.parseTime(this.queryParam('maxStartedAt')) || this.nextDay()
         };
@@ -114,25 +125,31 @@ export class ArchivedWorkflowList extends BasePage<RouteComponentProps<any>, Sta
 
     private get filterParams() {
         const params = new URLSearchParams();
-        this.state.selectedPhases.forEach(phase => {
-            params.append('phase', phase);
-        });
-        this.state.selectedLabels.forEach(label => {
-            params.append('label', label);
-        });
+        if (this.state.selectedPhases) {
+            this.state.selectedPhases.forEach(phase => {
+                params.append('phase', phase);
+            });
+        }
+        if (this.state.selectedLabels) {
+            this.state.selectedLabels.forEach(label => {
+                params.append('label', label);
+            });
+        }
         params.append('minStartedAt', this.state.minStartedAt.toISOString());
         params.append('maxStartedAt', this.state.maxStartedAt.toISOString());
         if (this.state.pagination.offset) {
             params.append('offset', this.state.pagination.offset);
         }
-        if (this.state.pagination.limit && this.state.pagination.limit !== defaultPaginationLimit) {
+        if (this.state.pagination.limit !== null && this.state.pagination.limit !== defaultPaginationLimit) {
             params.append('limit', this.state.pagination.limit.toString());
         }
         return params;
     }
 
     private saveHistory() {
-        this.url = uiUrl('archived-workflows/' + (this.state.namespace || '') + '?' + this.filterParams.toString());
+        this.storage.setItem('options', this.state, {} as State);
+        const newNamespace = Utils.managedNamespace ? '' : this.state.namespace;
+        this.url = uiUrl('archived-workflows' + (newNamespace ? '/' + newNamespace : '') + '?' + this.filterParams.toString());
         Utils.currentNamespace = this.state.namespace;
     }
 
@@ -168,11 +185,11 @@ export class ArchivedWorkflowList extends BasePage<RouteComponentProps<any>, Sta
         if (!this.state.workflows) {
             return <Loading />;
         }
-        const learnMore = <a href='https://argoproj.github.io/argo/workflow-archive/'>Learn more</a>;
+        const learnMore = <a href='https://argoproj.github.io/argo-workflows/workflow-archive/'>Learn more</a>;
         if (this.state.workflows.length === 0) {
             return (
                 <ZeroState title='No archived workflows'>
-                    <p>To add entries to the archive you must enabled archiving in configuration. Records are created in the archive on workflow completion.</p>
+                    <p>To add entries to the archive you must enable archiving in configuration. Records are created in the archive on workflow completion.</p>
                     <p>{learnMore}.</p>
                 </ZeroState>
             );

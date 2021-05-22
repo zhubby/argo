@@ -2,15 +2,14 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: sidecar-
-  labels:
-    argo-e2e: "true"
 spec:
   entrypoint: main
   templates:
     - name: main
       container:
-        image: argoproj/argosay:v2
+        image: argoproj/argosay:v1
       sidecars:
-        - name: sidecar-0
-          image: argoproj/argosay:v2
-          argso: [ sleep, "999" ]
+        - name: sidecar
+          image: argoproj/argosay:v1
+          command: [ sh, -c ]
+          args: [ "sleep 999" ]

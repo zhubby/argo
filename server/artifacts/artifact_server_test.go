@@ -8,25 +8,24 @@ import (
 	"net/url"
 	"testing"
 
-	artifact "github.com/argoproj/argo/v3/workflow/artifacts"
-	"github.com/argoproj/argo/v3/workflow/artifacts/resource"
-
 	"github.com/stretchr/testify/assert"
 	testhttp "github.com/stretchr/testify/http"
 	"github.com/stretchr/testify/mock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/argoproj/argo/v3/config"
-	sqldbmocks "github.com/argoproj/argo/v3/persist/sqldb/mocks"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	fakewfv1 "github.com/argoproj/argo/v3/pkg/client/clientset/versioned/fake"
-	"github.com/argoproj/argo/v3/server/auth"
-	authmocks "github.com/argoproj/argo/v3/server/auth/mocks"
-	"github.com/argoproj/argo/v3/util/instanceid"
-	armocks "github.com/argoproj/argo/v3/workflow/artifactrepositories/mocks"
-	"github.com/argoproj/argo/v3/workflow/common"
-	hydratorfake "github.com/argoproj/argo/v3/workflow/hydrator/fake"
+	"github.com/argoproj/argo-workflows/v3/config"
+	sqldbmocks "github.com/argoproj/argo-workflows/v3/persist/sqldb/mocks"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	fakewfv1 "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/fake"
+	"github.com/argoproj/argo-workflows/v3/server/auth"
+	authmocks "github.com/argoproj/argo-workflows/v3/server/auth/mocks"
+	"github.com/argoproj/argo-workflows/v3/util/instanceid"
+	armocks "github.com/argoproj/argo-workflows/v3/workflow/artifactrepositories/mocks"
+	artifactscommon "github.com/argoproj/argo-workflows/v3/workflow/artifacts/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/artifacts/resource"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
+	hydratorfake "github.com/argoproj/argo-workflows/v3/workflow/hydrator/fake"
 )
 
 func mustParse(text string) *url.URL {
@@ -38,12 +37,12 @@ func mustParse(text string) *url.URL {
 }
 
 type fakeArtifactDriver struct {
-	artifact.ArtifactDriver
+	artifactscommon.ArtifactDriver
 	data []byte
 }
 
 func (a *fakeArtifactDriver) Load(_ *wfv1.Artifact, path string) error {
-	return ioutil.WriteFile(path, a.data, 0666)
+	return ioutil.WriteFile(path, a.data, 0o666)
 }
 
 func (a *fakeArtifactDriver) Save(_ string, _ *wfv1.Artifact) error {
@@ -61,6 +60,18 @@ func newServer() *ArtifactServer {
 		Status: wfv1.WorkflowStatus{
 			Nodes: wfv1.Nodes{
 				"my-node": wfv1.NodeStatus{
+					Inputs: &wfv1.Inputs{
+						Artifacts: wfv1.Artifacts{
+							{
+								Name: "my-s3-input-artifact",
+								ArtifactLocation: wfv1.ArtifactLocation{
+									S3: &wfv1.S3Artifact{
+										Key: "my-wf/my-node/my-s3-input-artifact.tgz",
+									},
+								},
+							},
+						},
+					},
 					Outputs: &wfv1.Outputs{
 						Artifacts: wfv1.Artifacts{
 							{
@@ -100,15 +111,17 @@ func newServer() *ArtifactServer {
 					},
 				},
 			},
-		}}
+		},
+	}
 	argo := fakewfv1.NewSimpleClientset(wf, &wfv1.Workflow{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "my-ns", Name: "your-wf"}})
+		ObjectMeta: metav1.ObjectMeta{Namespace: "my-ns", Name: "your-wf"},
+	})
 	ctx := context.WithValue(context.WithValue(context.Background(), auth.KubeKey, kube), auth.WfKey, argo)
 	gatekeeper.On("Context", mock.Anything).Return(ctx, nil)
 	a := &sqldbmocks.WorkflowArchive{}
 	a.On("GetWorkflow", "my-uuid").Return(wf, nil)
 
-	fakeArtifactDriverFactory := func(_ context.Context, _ *wfv1.Artifact, _ resource.Interface) (artifact.ArtifactDriver, error) {
+	fakeArtifactDriverFactory := func(_ context.Context, _ *wfv1.Artifact, _ resource.Interface) (artifactscommon.ArtifactDriver, error) {
 		return &fakeArtifactDriver{data: []byte("my-data")}, nil
 	}
 
@@ -124,7 +137,7 @@ func newServer() *ArtifactServer {
 	return newArtifactServer(gatekeeper, hydratorfake.Noop, a, instanceid.NewService(instanceId), fakeArtifactDriverFactory, artifactRepositories)
 }
 
-func TestArtifactServer_GetArtifact(t *testing.T) {
+func TestArtifactServer_GetOutputArtifact(t *testing.T) {
 	s := newServer()
 
 	tests := []struct {
@@ -150,7 +163,7 @@ func TestArtifactServer_GetArtifact(t *testing.T) {
 			r := &http.Request{}
 			r.URL = mustParse(fmt.Sprintf("/artifacts/my-ns/my-wf/my-node/%s", tt.artifactName))
 			w := &testhttp.TestResponseWriter{}
-			s.GetArtifact(w, r)
+			s.GetOutputArtifact(w, r)
 			if assert.Equal(t, 200, w.StatusCode) {
 				assert.Equal(t, fmt.Sprintf(`filename="%s"`, tt.fileName), w.Header().Get("Content-Disposition"))
 				assert.Equal(t, "my-data", w.Output)
@@ -159,20 +172,47 @@ func TestArtifactServer_GetArtifact(t *testing.T) {
 	}
 }
 
-func TestArtifactServer_GetArtifactWithoutInstanceID(t *testing.T) {
+func TestArtifactServer_GetInputArtifact(t *testing.T) {
+	s := newServer()
+
+	tests := []struct {
+		fileName     string
+		artifactName string
+	}{
+		{
+			fileName:     "my-s3-input-artifact.tgz",
+			artifactName: "my-s3-input-artifact",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.artifactName, func(t *testing.T) {
+			r := &http.Request{}
+			r.URL = mustParse(fmt.Sprintf("/input-artifacts/my-ns/my-wf/my-node/%s", tt.artifactName))
+			w := &testhttp.TestResponseWriter{}
+			s.GetInputArtifact(w, r)
+			if assert.Equal(t, 200, w.StatusCode) {
+				assert.Equal(t, fmt.Sprintf(`filename="%s"`, tt.fileName), w.Header().Get("Content-Disposition"))
+				assert.Equal(t, "my-data", w.Output)
+			}
+		})
+	}
+}
+
+func TestArtifactServer_GetOutputArtifactWithoutInstanceID(t *testing.T) {
 	s := newServer()
 	r := &http.Request{}
 	r.URL = mustParse("/artifacts/my-ns/your-wf/my-node/my-artifact")
 	w := &testhttp.TestResponseWriter{}
-	s.GetArtifact(w, r)
+	s.GetOutputArtifact(w, r)
 	assert.NotEqual(t, 200, w.StatusCode)
 }
 
-func TestArtifactServer_GetArtifactByUID(t *testing.T) {
+func TestArtifactServer_GetOutputArtifactByUID(t *testing.T) {
 	s := newServer()
 	r := &http.Request{}
 	r.URL = mustParse("/artifacts/my-uuid/my-node/my-artifact")
 	w := &testhttp.TestResponseWriter{}
-	s.GetArtifactByUID(w, r)
+	s.GetOutputArtifactByUID(w, r)
 	assert.Equal(t, 500, w.StatusCode)
 }

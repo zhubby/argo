@@ -3,32 +3,40 @@ package fixtures
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/TwinProduction/go-color"
+	"github.com/stretchr/testify/suite"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 
 	// load authentication plugin for obtaining credentials from cloud providers.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
-	"github.com/stretchr/testify/suite"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/pointer"
 
-	"github.com/argoproj/argo/v3/config"
-	"github.com/argoproj/argo/v3/pkg/apis/workflow"
-	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
-	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/util/kubeconfig"
-	"github.com/argoproj/argo/v3/workflow/hydrator"
+	"github.com/argoproj/argo-workflows/v3/config"
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/util/env"
+	"github.com/argoproj/argo-workflows/v3/util/kubeconfig"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/hydrator"
 )
 
-const Namespace = "argo"
-const Label = "argo-e2e"
-const defaultTimeout = 30 * time.Second
+const (
+	Namespace = "argo"
+	Label     = workflow.WorkflowFullName + "/test" // mark this workflow as a test
+)
+
+var defaultTimeout = env.LookupEnvDurationOr("E2E_TIMEOUT", 30*time.Second)
 
 type E2ESuite struct {
 	suite.Suite
@@ -42,6 +50,8 @@ type E2ESuite struct {
 	cronClient        v1alpha1.CronWorkflowInterface
 	KubeClient        kubernetes.Interface
 	hydrator          hydrator.Interface
+	testStartedAt     time.Time
+	slowTests         []string
 }
 
 func (s *E2ESuite) SetupSuite() {
@@ -67,18 +77,45 @@ func (s *E2ESuite) SetupSuite() {
 
 func (s *E2ESuite) TearDownSuite() {
 	s.Persistence.Close()
+	for _, x := range s.slowTests {
+		_, _ = fmt.Println(color.Ize(color.Yellow, fmt.Sprintf("=== SLOW TEST:  %s", x)))
+	}
 }
 
 func (s *E2ESuite) BeforeTest(string, string) {
+	start := time.Now()
 	s.DeleteResources()
+	if time.Since(start) > time.Second {
+		_, _ = fmt.Printf("LONG SET-UP took %v (maybe previous test was slow)\n", time.Since(start).Truncate(time.Second))
+	}
+	s.testStartedAt = time.Now()
 }
 
-var foreground = metav1.DeletePropagationForeground
-var background = metav1.DeletePropagationBackground
+func (s *E2ESuite) AfterTest(suiteName, testName string) {
+	if s.T().Skipped() { // by default, we don't get good logging at test end
+		_, _ = fmt.Println(color.Ize(color.Gray, "=== SKIP: "+suiteName+"/"+testName))
+	} else if s.T().Failed() { // by default, we don't get good logging at test end
+		_, _ = fmt.Println(color.Ize(color.Red, "=== FAIL: "+suiteName+"/"+testName))
+		os.Exit(1)
+	} else {
+		_, _ = fmt.Println(color.Ize(color.Green, "=== PASS: "+suiteName+"/"+testName))
+		took := time.Since(s.testStartedAt)
+		if took > 15*time.Second {
+			s.slowTests = append(s.slowTests, fmt.Sprintf("%s/%s took %v", suiteName, testName, took.Truncate(time.Second)))
+		}
+	}
+}
 
 func (s *E2ESuite) DeleteResources() {
+	ctx := context.Background()
 
-	hasTestLabel := metav1.ListOptions{LabelSelector: Label}
+	l := func(r schema.GroupVersionResource) string {
+		if r.Resource == "pods" {
+			return common.LabelKeyWorkflow
+		}
+		return Label
+	}
+
 	resources := []schema.GroupVersionResource{
 		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.CronWorkflowPlural},
 		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowPlural},
@@ -87,14 +124,20 @@ func (s *E2ESuite) DeleteResources() {
 		{Group: workflow.Group, Version: workflow.Version, Resource: workflow.WorkflowEventBindingPlural},
 		{Group: workflow.Group, Version: workflow.Version, Resource: "sensors"},
 		{Group: workflow.Group, Version: workflow.Version, Resource: "eventsources"},
+		{Version: "v1", Resource: "pods"},
 		{Version: "v1", Resource: "resourcequotas"},
 		{Version: "v1", Resource: "configmaps"},
 	}
-
-	ctx := context.Background()
 	for _, r := range resources {
-		err := s.dynamicFor(r).DeleteCollection(ctx, metav1.DeleteOptions{PropagationPolicy: &background}, hasTestLabel)
-		s.CheckError(err)
+		for {
+			s.CheckError(s.dynamicFor(r).DeleteCollection(ctx, metav1.DeleteOptions{GracePeriodSeconds: pointer.Int64Ptr(2)}, metav1.ListOptions{LabelSelector: l(r)}))
+			ls, err := s.dynamicFor(r).List(ctx, metav1.ListOptions{LabelSelector: l(r)})
+			s.CheckError(err)
+			if len(ls.Items) == 0 {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 
 	// delete archived workflows from the archive
@@ -107,17 +150,6 @@ func (s *E2ESuite) DeleteResources() {
 		for _, w := range workflows {
 			err := archive.DeleteWorkflow(string(w.UID))
 			s.CheckError(err)
-		}
-	}
-
-	for _, r := range resources {
-		for {
-			list, err := s.dynamicFor(r).List(ctx, hasTestLabel)
-			s.CheckError(err)
-			if len(list.Items) == 0 {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

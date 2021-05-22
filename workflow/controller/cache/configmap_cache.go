@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 )
 
 type configMapCache struct {
@@ -60,7 +60,7 @@ func (c *configMapCache) Load(ctx context.Context, key string) (*Entry, error) {
 	}
 
 	c.logInfo(log.Fields{}, "config map cache loaded")
-
+	hitTime := time.Now()
 	rawEntry, ok := cm.Data[key]
 	if !ok || rawEntry == "" {
 		c.logInfo(log.Fields{}, "config map cache miss: entry does not exist")
@@ -71,6 +71,20 @@ func (c *configMapCache) Load(ctx context.Context, key string) (*Entry, error) {
 	err = json.Unmarshal([]byte(rawEntry), &entry)
 	if err != nil {
 		return nil, fmt.Errorf("malformed cache entry: could not unmarshal JSON; unable to parse: %w", err)
+	}
+
+	entry.LastHitTimestamp = metav1.Time{Time: hitTime}
+	entryJSON, err := json.Marshal(entry)
+	if err != nil {
+		c.logError(err, log.Fields{"key": key}, "Unable to marshal cache entry with last hit timestamp")
+		return nil, fmt.Errorf("unable to marshal cache entry with last hit timestamp: %w", err)
+	}
+	cm.Data[key] = string(entryJSON)
+
+	_, err = c.kubeClient.CoreV1().ConfigMaps(c.namespace).Update(ctx, cm, metav1.UpdateOptions{})
+	if err != nil {
+		c.logError(err, log.Fields{}, "Error updating last hit timestamp on cache")
+		return nil, fmt.Errorf("error updating last hit timestamp on cache: %w", err)
 	}
 
 	return &entry, nil
@@ -102,10 +116,13 @@ func (c *configMapCache) Save(ctx context.Context, key string, nodeId string, va
 		}
 	}
 
+	creationTime := time.Now()
+
 	newEntry := Entry{
 		NodeID:            nodeId,
 		Outputs:           value,
-		CreationTimestamp: metav1.Time{Time: time.Now()},
+		CreationTimestamp: metav1.Time{Time: creationTime},
+		LastHitTimestamp:  metav1.Time{Time: creationTime},
 	}
 
 	entryJSON, err := json.Marshal(newEntry)
@@ -122,7 +139,7 @@ func (c *configMapCache) Save(ctx context.Context, key string, nodeId string, va
 	_, err = c.kubeClient.CoreV1().ConfigMaps(c.namespace).Update(ctx, cache, metav1.UpdateOptions{})
 	if err != nil {
 		c.logError(err, log.Fields{"key": key, "nodeId": nodeId}, "Kubernetes error creating new cache entry")
-		return fmt.Errorf("error creating cache entry: %w", err)
+		return fmt.Errorf("error creating cache entry: %w. Please check out this page for help: https://argoproj.github.io/argo-workflows/memoization/#faqs", err)
 	}
 	return nil
 }

@@ -4,33 +4,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 )
 
 func unsupportedArtifactSubPathResolution(t *testing.T, artifactString string) {
-	scope := wfScope{
-		tmpl:  nil,
-		scope: make(map[string]interface{}),
-	}
+	scope := createScope(nil)
 
 	artifact := unmarshalArtifact(artifactString)
 
 	scope.addArtifactToScope("steps.test.outputs.artifacts.art", *artifact)
 
 	// Ensure that normal artifact resolution without adding subpaths works
-	resolvedArtifact, err := scope.resolveArtifact("{{steps.test.outputs.artifacts.art}}", "")
+	resolvedArtifact, err := scope.resolveArtifact(&wfv1.Artifact{From: "{{steps.test.outputs.artifacts.art}}"})
+	assert.NoError(t, err)
+	assert.Equal(t, resolvedArtifact, artifact)
+
+	// Ensure that we allow whitespaces in between names and brackets
+	resolvedArtifact, err = scope.resolveArtifact(&wfv1.Artifact{From: "{{steps.test.outputs.artifacts.art}}"})
 	assert.NoError(t, err)
 	assert.Equal(t, resolvedArtifact, artifact)
 
 	// Ensure that adding a subpath results in an error being thrown
-	_, err = scope.resolveArtifact("{{steps.test.outputs.artifacts.art}}", "some/subkey")
+	_, err = scope.resolveArtifact(&wfv1.Artifact{SubPath: "some/subkey", From: "{{steps.test.outputs.artifacts.art}}"})
 	assert.Error(t, err)
 }
 
 func artifactSubPathResolution(t *testing.T, artifactString string, subPathArtifactString string) {
-	scope := wfScope{
-		tmpl:  nil,
-		scope: make(map[string]interface{}),
-	}
+	scope := createScope(nil)
 
 	artifact := unmarshalArtifact(artifactString)
 	originalArtifact := artifact.DeepCopy()
@@ -39,26 +40,26 @@ func artifactSubPathResolution(t *testing.T, artifactString string, subPathArtif
 	scope.addArtifactToScope("steps.test.outputs.artifacts.art", *artifact)
 
 	// Ensure that normal artifact resolution without adding subpaths works
-	resolvedArtifact, err := scope.resolveArtifact("{{steps.test.outputs.artifacts.art}}", "")
+	resolvedArtifact, err := scope.resolveArtifact(&wfv1.Artifact{From: "{{steps.test.outputs.artifacts.art}}"})
 	assert.NoError(t, err)
 	assert.Equal(t, resolvedArtifact, artifact)
 
 	// Ensure that adding a subpath results in artifact key being modified
-	resolvedArtifact, err = scope.resolveArtifact("{{steps.test.outputs.artifacts.art}}", "some/subkey")
+	resolvedArtifact, err = scope.resolveArtifact(&wfv1.Artifact{SubPath: "some/subkey", From: "{{steps.test.outputs.artifacts.art}}"})
 	assert.NoError(t, err)
 	assert.Equal(t, resolvedArtifact, artifactWithSubPath)
 
 	// Ensure that subpath template values are also resolved
 	scope.addParamToScope("steps.test.outputs.parameters.subkey", "some")
 
-	resolvedArtifact, err = scope.resolveArtifact("{{steps.test.outputs.artifacts.art}}", "{{steps.test.outputs.parameters.subkey}}/subkey")
+	resolvedArtifact, err = scope.resolveArtifact(&wfv1.Artifact{SubPath: "{{steps.test.outputs.parameters.subkey}}/subkey", From: "{{steps.test.outputs.artifacts.art}}"})
 	assert.NoError(t, err)
 	assert.Equal(t, resolvedArtifact, artifactWithSubPath)
 	assert.Equal(t, artifact, originalArtifact)
 }
 
 func TestSubPathResolution(t *testing.T) {
-	var s3Artifact = `
+	s3Artifact := `
   name: s3-artifact
   path: some/local/path
   s3:
@@ -73,7 +74,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-minio-cred
   `
 
-	var s3ArtifactWithSubpath = `
+	s3ArtifactWithSubpath := `
   name: s3-artifact
   path: some/local/path
   s3:
@@ -88,7 +89,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-minio-cred
   `
 
-	var ArtifactoryArtifact = `
+	ArtifactoryArtifact := `
   name: artifactory-artifact
   path: some/local/path
   artifactory:
@@ -101,7 +102,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-artifactory-cred
   `
 
-	var ArtifactoryArtifactWithSubpath = `
+	ArtifactoryArtifactWithSubpath := `
   name: artifactory-artifact
   path: some/local/path
   artifactory:
@@ -114,7 +115,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-artifactory-cred
   `
 
-	var GCSArtifact = `
+	GCSArtifact := `
   name: gcs-artifact
   path: some/local/path
   gcs:
@@ -125,7 +126,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-gcs-cred
   `
 
-	var GCSArtifactWithSubpath = `
+	GCSArtifactWithSubpath := `
   name: gcs-artifact
   path: some/local/path
   gcs:
@@ -136,7 +137,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-gcs-cred
   `
 
-	var HDFSArtifact = `
+	HDFSArtifact := `
   name: hdfs-artifact
   path: some/local/path
   hdfs:
@@ -146,7 +147,7 @@ func TestSubPathResolution(t *testing.T) {
     path: /path/to/some/key
     hdfsUser: root
   `
-	var HDFSArtifactWithSubpath = `
+	HDFSArtifactWithSubpath := `
   name: hdfs-artifact
   path: some/local/path
   hdfs:
@@ -157,7 +158,7 @@ func TestSubPathResolution(t *testing.T) {
     hdfsUser: root
   `
 
-	var OSSArtifact = `
+	OSSArtifact := `
   name: oss-artifact
   path: some/local/path
   oss:
@@ -171,7 +172,7 @@ func TestSubPathResolution(t *testing.T) {
       name: my-oss-credentials
       key: secretKey
   `
-	var OSSArtifactWithSubpath = `
+	OSSArtifactWithSubpath := `
   name: oss-artifact
   path: some/local/path
   oss:
@@ -186,27 +187,27 @@ func TestSubPathResolution(t *testing.T) {
       key: secretKey
   `
 
-	var HTTPArtifact = `
+	HTTPArtifact := `
   name: oss-artifact
   path: some/local/path
   http:
     url: https://example.com
   `
-	var HTTPArtifactWithSubpath = `
+	HTTPArtifactWithSubpath := `
   name: oss-artifact
   path: some/local/path
   http:
     url: https://example.com/some/subkey
   `
 
-	var GitArtifact = `
+	GitArtifact := `
   name: git-artifact
   path: some/local/path
   git:
-    repo: https://github.com/argoproj/argo
+    repo: https://github.com/argoproj/argo-workflows
   `
 
-	var RawArtifact = `
+	RawArtifact := `
   name: raw-artifact
   path: some/local/path
   raw:
@@ -238,4 +239,64 @@ func TestSubPathResolution(t *testing.T) {
 	t.Run("Raw Artifact SubPath Unsupported Resolution", func(t *testing.T) {
 		unsupportedArtifactSubPathResolution(t, RawArtifact)
 	})
+}
+
+func TestResolveParameters(t *testing.T) {
+	assert := assert.New(t)
+	tmpl := wfv1.Template{
+		Name: "test",
+		Inputs: wfv1.Inputs{
+			Parameters: []wfv1.Parameter{
+				{
+					Name:  "one",
+					Value: wfv1.AnyStringPtr(1),
+				},
+				{
+					Name:  "two",
+					Value: wfv1.AnyStringPtr(2),
+				},
+			},
+			Artifacts: nil,
+		},
+	}
+
+	scope := createScope(&tmpl)
+	scope.addParamToScope("steps.t1.outputs.parameters.result", "4")
+	scope.addParamToScope("workflows.arguments.param", "head")
+	scope.addParamToScope("steps.coin-flip.outputs.parameters.result", "5")
+
+	valFrom := &wfv1.ValueFrom{
+		Expression: "inputs.parameters.one == '1' ? inputs.parameters.two: steps.t1.outputs.parameters.result",
+	}
+	result, err := scope.resolveParameter(valFrom)
+	assert.NoError(err)
+	assert.Equal("2", result)
+
+	valFrom = &wfv1.ValueFrom{
+		Parameter: "{{steps.t1.outputs.parameters.result}}",
+	}
+	result, err = scope.resolveParameter(valFrom)
+	assert.NoError(err)
+	assert.Equal("4", result)
+
+	valFrom = &wfv1.ValueFrom{
+		Expression: "inputs.parameters.one == 2 ? steps.t1.outputs.parameters.result :workflows.arguments.param",
+	}
+	result, err = scope.resolveParameter(valFrom)
+	assert.NoError(err)
+	assert.Equal("head", result)
+
+	valFrom = &wfv1.ValueFrom{
+		Expression: "asInt(inputs.parameters.one) == 1 ? steps['coin-flip'].outputs.parameters.result :workflows.arguments.param",
+	}
+	result, err = scope.resolveParameter(valFrom)
+	assert.NoError(err)
+	assert.Equal("5", result)
+
+	valFrom = &wfv1.ValueFrom{
+		Expression: "asInt(inputs.parameters.one) == 1 ? steps[\"coin-flip\"].outputs.parameters.result :workflows.arguments.param",
+	}
+	result, err = scope.resolveParameter(valFrom)
+	assert.NoError(err)
+	assert.Equal("5", result)
 }

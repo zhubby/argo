@@ -11,22 +11,24 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/argoproj/pkg/file"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/argoproj/pkg/file"
-
-	"github.com/argoproj/argo/v3/errors"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/errors"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/workflow/artifacts/common"
 )
 
 // ArtifactDriver is a driver for GCS
 type ArtifactDriver struct {
 	ServiceAccountKey string
 }
+
+var _ common.ArtifactDriver = &ArtifactDriver{}
 
 func (g *ArtifactDriver) newGCSClient() (*storage.Client, error) {
 	if g.ServiceAccountKey != "" {
@@ -105,7 +107,7 @@ func downloadObject(client *storage.Client, bucket, key, objName, path string) e
 	localPath := filepath.Join(path, relObjPath)
 	objectDir, _ := filepath.Split(localPath)
 	if objectDir != "" {
-		if err := os.MkdirAll(objectDir, 0700); err != nil {
+		if err := os.MkdirAll(objectDir, 0o700); err != nil {
 			return fmt.Errorf("mkdir %s: %v", objectDir, err)
 		}
 	}
@@ -248,4 +250,8 @@ func uploadObject(client *storage.Client, bucket, key, localPath string) error {
 		return fmt.Errorf("writer close: %v", err)
 	}
 	return nil
+}
+
+func (g *ArtifactDriver) ListObjects(artifact *wfv1.Artifact) ([]string, error) {
+	return nil, fmt.Errorf("ListObjects is currently not supported for this artifact type, but it will be in a future version")
 }

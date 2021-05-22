@@ -15,11 +15,13 @@ import {Context} from '../../../shared/context';
 import {Footnote} from '../../../shared/footnote';
 import {historyUrl} from '../../../shared/history';
 import {services} from '../../../shared/services';
+import {useQueryParams} from '../../../shared/use-query-params';
+import {Utils} from '../../../shared/utils';
 import {WorkflowTemplateCreator} from '../workflow-template-creator';
 
 require('./workflow-template-list.scss');
 
-const learnMore = <a href='https://argoproj.github.io/argo/workflow-templates/'>Learn more</a>;
+const learnMore = <a href='https://argoproj.github.io/argo-workflows/workflow-templates/'>Learn more</a>;
 
 export const WorkflowTemplateList = ({match, location, history}: RouteComponentProps<any>) => {
     // boiler-plate
@@ -27,12 +29,20 @@ export const WorkflowTemplateList = ({match, location, history}: RouteComponentP
     const {navigation} = useContext(Context);
 
     // state for URL and query parameters
-    const [namespace, setNamespace] = useState(match.params.namespace || '');
+    const [namespace, setNamespace] = useState(Utils.getNamespace(match.params.namespace) || '');
     const [sidePanel, setSidePanel] = useState(queryParams.get('sidePanel') === 'true');
+
+    useEffect(
+        useQueryParams(history, p => {
+            setSidePanel(p.get('sidePanel') === 'true');
+        }),
+        [history]
+    );
+
     useEffect(
         () =>
             history.push(
-                historyUrl('workflow-templates/{namespace}', {
+                historyUrl('workflow-templates' + (Utils.managedNamespace ? '' : '/{namespace}'), {
                     namespace,
                     sidePanel
                 })

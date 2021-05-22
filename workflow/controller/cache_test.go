@@ -8,8 +8,8 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/workflow/controller/cache"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/workflow/controller/cache"
 )
 
 var sampleConfigMapCacheEntry = apiv1.ConfigMap{
@@ -45,8 +45,15 @@ func TestConfigMapCacheLoadHit(t *testing.T) {
 	_, err := controller.kubeclientset.CoreV1().ConfigMaps("default").Create(ctx, &sampleConfigMapCacheEntry, metav1.CreateOptions{})
 	assert.NoError(t, err)
 	c := cache.NewConfigMapCache("default", controller.kubeclientset, "whalesay-cache")
+
+	cm, err := controller.kubeclientset.CoreV1().ConfigMaps("default").Get(ctx, sampleConfigMapCacheEntry.Name, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Nil(t, cm.Labels)
+
 	entry, err := c.Load(ctx, "hi-there-world")
 	assert.NoError(t, err)
+	assert.True(t, entry.LastHitTimestamp.Time.After(entry.CreationTimestamp.Time))
+
 	outputs := entry.Outputs
 	assert.NoError(t, err)
 	if assert.Len(t, outputs.Parameters, 1) {
@@ -70,7 +77,7 @@ func TestConfigMapCacheLoadMiss(t *testing.T) {
 
 func TestConfigMapCacheSave(t *testing.T) {
 	var MockParamValue string = "Hello world"
-	var MockParam = wfv1.Parameter{
+	MockParam := wfv1.Parameter{
 		Name:  "hello",
 		Value: wfv1.AnyStringPtr(MockParamValue),
 	}
@@ -87,4 +94,7 @@ func TestConfigMapCacheSave(t *testing.T) {
 	cm, err := controller.kubeclientset.CoreV1().ConfigMaps("default").Get(ctx, "whalesay-cache", metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.NotNil(t, cm)
+	var entry cache.Entry
+	wfv1.MustUnmarshal([]byte(cm.Data["hi-there-world"]), &entry)
+	assert.Equal(t, entry.LastHitTimestamp.Time, entry.CreationTimestamp.Time)
 }

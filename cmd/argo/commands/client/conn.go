@@ -2,22 +2,30 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/argoproj/argo/v3/pkg/apiclient"
-	"github.com/argoproj/argo/v3/util/kubeconfig"
+	"github.com/argoproj/argo-workflows/v3"
+	"github.com/argoproj/argo-workflows/v3/pkg/apiclient"
+	"github.com/argoproj/argo-workflows/v3/util/kubeconfig"
 )
 
-var argoServerOpts = apiclient.ArgoServerOpts{}
-var instanceID string
+var (
+	argoServerOpts = apiclient.ArgoServerOpts{}
+	instanceID     string
+)
 
 var overrides = clientcmd.ConfigOverrides{}
 
-var explicitPath string
+var (
+	explicitPath string
+	Offline      bool
+)
 
 func AddKubectlFlagsToCmd(cmd *cobra.Command) {
 	kflags := clientcmd.RecommendedConfigOverrideFlags("")
@@ -39,7 +47,7 @@ func AddAPIClientFlagsToCmd(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&argoServerOpts.Path, "argo-base-href", os.Getenv("ARGO_BASE_HREF"), "An path to use with HTTP client (e.g. due to BASE_HREF). Defaults to the ARGO_BASE_HREF environment variable.")
 	cmd.PersistentFlags().BoolVar(&argoServerOpts.HTTP1, "argo-http1", os.Getenv("ARGO_HTTP1") == "true", "If true, use the HTTP client. Defaults to the ARGO_HTTP1 environment variable.")
 	// "-e" for encrypted - like zip
-	cmd.PersistentFlags().BoolVarP(&argoServerOpts.Secure, "secure", "e", os.Getenv("ARGO_SECURE") == "true", "Whether or not the server is using TLS with the Argo Server. Defaults to the ARGO_SECURE environment variable.")
+	cmd.PersistentFlags().BoolVarP(&argoServerOpts.Secure, "secure", "e", os.Getenv("ARGO_SECURE") != "false", "Whether or not the server is using TLS with the Argo Server. Defaults to the ARGO_SECURE environment variable.")
 	// "-k" like curl
 	cmd.PersistentFlags().BoolVarP(&argoServerOpts.InsecureSkipVerify, "insecure-skip-verify", "k", os.Getenv("ARGO_INSECURE_SKIP_VERIFY") == "true", "If true, the Argo Server's certificate will not be checked for validity. This will make your HTTPS connections insecure. Defaults to the ARGO_INSECURE_SKIP_VERIFY environment variable.")
 }
@@ -53,6 +61,7 @@ func NewAPIClient() (context.Context, apiclient.Client) {
 				return GetAuthString()
 			},
 			ClientConfigSupplier: func() clientcmd.ClientConfig { return GetConfig() },
+			Offline:              Offline,
 		})
 	if err != nil {
 		log.Fatal(err)
@@ -61,6 +70,9 @@ func NewAPIClient() (context.Context, apiclient.Client) {
 }
 
 func Namespace() string {
+	if Offline {
+		return ""
+	}
 	if overrides.Context.Namespace != "" {
 		return overrides.Context.Namespace
 	}
@@ -84,6 +96,8 @@ func GetAuthString() string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	version := argo.GetVersion()
+	restConfig = restclient.AddUserAgent(restConfig, fmt.Sprintf("argo-workflows/%s argo-cli", version.Version))
 	authString, err := kubeconfig.GetAuthString(restConfig, explicitPath)
 	if err != nil {
 		log.Fatal(err)

@@ -14,7 +14,7 @@ spec:
       serviceAccountName: argo-server
       containers:
         - name: argo-server
-          image: argoproj/argocli:latest
+          image: docker.io/argoproj/argocli:latest
           securityContext:
             capabilities:
               drop:
@@ -26,7 +26,7 @@ spec:
           readinessProbe:
             httpGet:
               port: 2746
-              scheme: HTTP
+              scheme: HTTPS
               path: /
             initialDelaySeconds: 10
             periodSeconds: 20

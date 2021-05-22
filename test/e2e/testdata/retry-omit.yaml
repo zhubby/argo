@@ -2,34 +2,24 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: retry-omit-
-  labels:
-    argo-e2e: true
 spec:
-  entrypoint: diamond
+  entrypoint: main
   templates:
     - dag:
         tasks:
-          - name: A
-            template: pass
-          - depends: A
-            name: C
+          - name: F
             template: fail
-          - depends: C
-            name: should-not-execute
+          - name: O
+            depends: F
             template: pass
-          - depends: A
-            name: should-execute-3
-            template: fail
-      name: diamond
-    - container:
+      name: main
+    - name: pass
+      container:
+        image: argoproj/argosay:v2
+    - name: fail
+      container:
         args:
           - exit
-          - 0
+          - "1"
         image: argoproj/argosay:v2
-      name: pass
-    - container:
-        args:
-          - exit
-          - 1
-        image: argoproj/argosay:v2
-      name: fail
+

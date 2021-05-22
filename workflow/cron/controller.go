@@ -6,6 +6,12 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
+
+	"github.com/argoproj/argo-workflows/v3/util/env"
+
 	"github.com/argoproj/pkg/sync"
 	log "github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
@@ -14,8 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	runtimeutil "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -23,13 +29,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/argoproj/argo/v3/pkg/apis/workflow"
-	"github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
-	"github.com/argoproj/argo/v3/workflow/common"
-	"github.com/argoproj/argo/v3/workflow/events"
-	"github.com/argoproj/argo/v3/workflow/metrics"
-	"github.com/argoproj/argo/v3/workflow/util"
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow"
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo-workflows/v3/workflow/events"
+	"github.com/argoproj/argo-workflows/v3/workflow/metrics"
+	"github.com/argoproj/argo-workflows/v3/workflow/util"
 )
 
 // Controller is a controller for cron workflows
@@ -41,7 +46,6 @@ type Controller struct {
 	keyLock              sync.KeyLock
 	wfClientset          versioned.Interface
 	wfLister             util.WorkflowLister
-	wfQueue              workqueue.RateLimitingInterface
 	cronWfInformer       informers.GenericInformer
 	cronWfQueue          workqueue.RateLimitingInterface
 	dynamicInterface     dynamic.Interface
@@ -54,6 +58,19 @@ const (
 	cronWorkflowWorkers      = 8
 )
 
+var (
+	cronSyncPeriod = env.LookupEnvDurationOr("CRON_SYNC_PERIOD", 10*time.Second)
+)
+
+func init() {
+	// this make sure we support timezones
+	_, err := time.Parse(time.RFC822, "17 Oct 07 14:03 PST")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.WithField("cronSyncPeriod", cronSyncPeriod).Info("cron config")
+}
+
 func NewCronController(wfclientset versioned.Interface, dynamicInterface dynamic.Interface, namespace string, managedNamespace string, instanceId string, metrics *metrics.Metrics, eventRecorderManager events.EventRecorderManager) *Controller {
 	return &Controller{
 		wfClientset:          wfclientset,
@@ -63,7 +80,6 @@ func NewCronController(wfclientset versioned.Interface, dynamicInterface dynamic
 		cron:                 newCronFacade(),
 		keyLock:              sync.NewKeyLock(),
 		dynamicInterface:     dynamicInterface,
-		wfQueue:              metrics.RateLimiterWithBusyWorkers(workqueue.DefaultControllerRateLimiter(), "wf_cron_queue"),
 		cronWfQueue:          metrics.RateLimiterWithBusyWorkers(workqueue.DefaultControllerRateLimiter(), "cron_wf_queue"),
 		metrics:              metrics,
 		eventRecorderManager: eventRecorderManager,
@@ -71,8 +87,8 @@ func NewCronController(wfclientset versioned.Interface, dynamicInterface dynamic
 }
 
 func (cc *Controller) Run(ctx context.Context) {
+	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
 	defer cc.cronWfQueue.ShutDown()
-	defer cc.wfQueue.ShutDown()
 	log.Infof("Starting CronWorkflow controller")
 	if cc.instanceId != "" {
 		log.Infof("...with InstanceID: %s", cc.instanceId)
@@ -94,7 +110,8 @@ func (cc *Controller) Run(ctx context.Context) {
 	defer cc.cron.Stop()
 
 	go cc.cronWfInformer.Informer().Run(ctx.Done())
-	go wait.UntilWithContext(ctx, cc.syncAll, 10*time.Second)
+
+	go wait.UntilWithContext(ctx, cc.syncAll, cronSyncPeriod)
 
 	for i := 0; i < cronWorkflowWorkers; i++ {
 		go wait.Until(cc.runCronWorker, time.Second, ctx.Done())
@@ -110,6 +127,8 @@ func (cc *Controller) runCronWorker() {
 }
 
 func (cc *Controller) processNextCronItem(ctx context.Context) bool {
+	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
+
 	key, quit := cc.cronWfQueue.Get()
 	if quit {
 		return false
@@ -208,6 +227,8 @@ func (cc *Controller) addCronWorkflowInformerHandler() {
 }
 
 func (cc *Controller) syncAll(ctx context.Context) {
+	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
+
 	log.Debug("Syncing all CronWorkflows")
 
 	workflows, err := cc.wfLister.List()

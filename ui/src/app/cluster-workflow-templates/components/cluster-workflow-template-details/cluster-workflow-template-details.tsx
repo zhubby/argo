@@ -10,6 +10,7 @@ import {Loading} from '../../../shared/components/loading';
 import {Context} from '../../../shared/context';
 import {historyUrl} from '../../../shared/history';
 import {services} from '../../../shared/services';
+import {useQueryParams} from '../../../shared/use-query-params';
 import {Utils} from '../../../shared/utils';
 import {SubmitWorkflowPanel} from '../../../workflows/components/submit-workflow-panel';
 import {ClusterWorkflowTemplateEditor} from '../cluster-workflow-template-editor';
@@ -30,6 +31,14 @@ export const ClusterWorkflowTemplateDetails = ({history, location, match}: Route
     const [template, setTemplate] = useState<ClusterWorkflowTemplate>();
     const [edited, setEdited] = useState(false);
 
+    useEffect(
+        useQueryParams(history, p => {
+            setSidePanel(p.get('sidePanel') === 'true');
+            setTab(p.get('tab'));
+        }),
+        [history]
+    );
+
     useEffect(() => setEdited(true), [template]);
     useEffect(() => {
         history.push(historyUrl('cluster-workflow-templates/{name}', {name, sidePanel, tab}));
@@ -47,7 +56,7 @@ export const ClusterWorkflowTemplateDetails = ({history, location, match}: Route
     useEffect(() => {
         services.info
             .getInfo()
-            .then(info => setNamespace(Utils.getNamespace(info.managedNamespace)))
+            .then(info => setNamespace(Utils.getNamespaceWithDefault(info.managedNamespace)))
             .then(() => setError(null))
             .catch(setError);
     }, []);

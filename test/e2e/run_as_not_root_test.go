@@ -5,12 +5,9 @@ package e2e
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/test/e2e/fixtures"
+	"github.com/argoproj/argo-workflows/v3/test/e2e/fixtures"
 )
 
 type RunAsNonRootSuite struct {
@@ -23,11 +20,16 @@ func (s *RunAsNonRootSuite) TestRunAsNonRootWorkflow() {
 		Workflow("@smoke/runasnonroot-workflow.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded)
+}
+
+func (s *RunAsNonRootSuite) TestRunAsNonRootWithOutputParams() {
+	s.Need(fixtures.None(fixtures.Docker, fixtures.K8SAPI, fixtures.Kubelet))
+	s.Given().
+		Workflow("@smoke/runasnonroot-output-params-pipeline.yaml").
+		When().
+		SubmitWorkflow().
+		WaitForWorkflow(fixtures.ToBeSucceeded)
 }
 
 func TestRunAsNonRootSuite(t *testing.T) {

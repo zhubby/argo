@@ -423,6 +423,20 @@ rules:
   - get
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - update
+- apiGroups:
   - argoproj.io
   resources:
   - workflows
@@ -599,7 +613,6 @@ metadata:
 apiVersion: v1
 data:
   artifactRepository: |
-    archiveLogs: true
     s3:
       bucket: my-bucket
       endpoint: minio:9000
@@ -610,11 +623,30 @@ data:
       secretKeySecret:
         name: my-minio-cred
         key: secretkey
+  containerRuntimeExecutor: docker
+  containerRuntimeExecutors: |
+    - name: k8sapi
+      selector:
+        matchLabels:
+          workflows.argoproj.io/container-runtime-executor: k8sapi
+    - name: emissary
+      selector:
+        matchLabels:
+          workflows.argoproj.io/container-runtime-executor: emissary
   executor: |
     resources:
       requests:
         cpu: 10m
         memory: 64Mi
+  images: |
+    argoproj/argosay:v1:
+      command: [cowsay]
+    argoproj/argosay:v2:
+      command: [/argosay]
+    docker/whalesay:latest:
+       command: [cowsay]
+    python:alpine3.6:
+       command: [python3]
   links: |
     - name: Workflow Link
       scope: workflow
@@ -632,7 +664,6 @@ data:
       scope: sensor-logs
       url: http://logging-facility?namespace=${metadata.namespace}&podName=${metadata.name}&startedAt=${status.startedAt}&finishedAt=${status.finishedAt}
   metricsConfig: |
-    disableLegacy: true
     enabled: true
     path: /metrics
     port: 9090
@@ -737,7 +768,7 @@ spec:
         - server
         - --auth-mode
         - client
-        image: argoproj/argocli:latest
+        image: docker.io/argoproj/argocli:latest
         name: argo-server
         ports:
         - containerPort: 2746
@@ -746,7 +777,7 @@ spec:
           httpGet:
             path: /
             port: 2746
-            scheme: HTTP
+            scheme: HTTPS
           initialDelaySeconds: 10
           periodSeconds: 20
         securityContext:
@@ -842,7 +873,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
-        image: argoproj/workflow-controller:latest
+        image: docker.io/argoproj/workflow-controller:latest
         livenessProbe:
           httpGet:
             path: /metrics
@@ -854,9 +885,12 @@ spec:
         - containerPort: 9090
           name: metrics
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
       nodeSelector:
         kubernetes.io/os: linux
       securityContext:

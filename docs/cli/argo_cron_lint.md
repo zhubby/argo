@@ -13,8 +13,9 @@ argo cron lint FILE... [flags]
 ### Options
 
 ```
-  -h, --help     help for lint
-      --strict   perform strict workflow validation (default true)
+  -h, --help            help for lint
+  -o, --output string   Linting results output format. One of: pretty|simple (default "pretty")
+      --strict          perform strict validation (default true)
 ```
 
 ### Options inherited from parent commands
@@ -39,7 +40,7 @@ argo cron lint FILE... [flags]
   -n, --namespace string               If present, the namespace scope for this CLI request
       --password string                Password for basic authentication to the API server
       --request-timeout string         The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests. (default "0")
-  -e, --secure                         Whether or not the server is using TLS with the Argo Server. Defaults to the ARGO_SECURE environment variable.
+  -e, --secure                         Whether or not the server is using TLS with the Argo Server. Defaults to the ARGO_SECURE environment variable. (default true)
       --server string                  The address and port of the Kubernetes API server
       --tls-server-name string         If provided, this name will be used to validate server certificate. If this is not provided, hostname used to contact the server is used.
       --token string                   Bearer token for authentication to the API server

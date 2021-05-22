@@ -7,9 +7,10 @@ import (
 	"regexp"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 
-	argoerrs "github.com/argoproj/argo/v3/errors"
+	argoerrs "github.com/argoproj/argo-workflows/v3/errors"
 )
 
 func IsTransientErr(err error) bool {
@@ -17,7 +18,13 @@ func IsTransientErr(err error) bool {
 		return false
 	}
 	err = argoerrs.Cause(err)
-	return isExceededQuotaErr(err) || apierr.IsTooManyRequests(err) || isResourceQuotaConflictErr(err) || isTransientNetworkErr(err) || apierr.IsServerTimeout(err) || apierr.IsServiceUnavailable(err) || matchTransientErrPattern(err)
+	isTransient := isExceededQuotaErr(err) || apierr.IsTooManyRequests(err) || isResourceQuotaConflictErr(err) || isTransientNetworkErr(err) || apierr.IsServerTimeout(err) || apierr.IsServiceUnavailable(err) || matchTransientErrPattern(err)
+	if isTransient {
+		log.Infof("Transient error: %v", err)
+	} else {
+		log.Warnf("Non-transient error: %v", err)
+	}
+	return isTransient
 }
 
 func matchTransientErrPattern(err error) bool {

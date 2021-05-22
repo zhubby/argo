@@ -9,7 +9,6 @@ import (
 
 	eventsource "github.com/argoproj/argo-events/pkg/client/eventsource/clientset/versioned"
 	sensor "github.com/argoproj/argo-events/pkg/client/sensor/clientset/versioned"
-	"github.com/argoproj/pkg/errors"
 	"github.com/argoproj/pkg/stats"
 	log "github.com/sirupsen/logrus"
 	"github.com/skratchdot/open-golang/open"
@@ -17,13 +16,17 @@ import (
 	"golang.org/x/net/context"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/utils/env"
 
-	"github.com/argoproj/argo/v3/cmd/argo/commands/client"
-	wfclientset "github.com/argoproj/argo/v3/pkg/client/clientset/versioned"
-	"github.com/argoproj/argo/v3/server/apiserver"
-	"github.com/argoproj/argo/v3/server/auth"
-	"github.com/argoproj/argo/v3/server/types"
-	"github.com/argoproj/argo/v3/util/help"
+	"github.com/argoproj/argo-workflows/v3"
+	"github.com/argoproj/argo-workflows/v3/cmd/argo/commands/client"
+	wfclientset "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo-workflows/v3/server/apiserver"
+	"github.com/argoproj/argo-workflows/v3/server/auth"
+	"github.com/argoproj/argo-workflows/v3/server/types"
+	"github.com/argoproj/argo-workflows/v3/util/cmd"
+	"github.com/argoproj/argo-workflows/v3/util/help"
 )
 
 func NewServerCommand() *cobra.Command {
@@ -41,19 +44,25 @@ func NewServerCommand() *cobra.Command {
 		eventWorkerCount         int
 		frameOptions             string
 		accessControlAllowOrigin string
+		logFormat                string // --log-format
 	)
 
-	var command = cobra.Command{
+	command := cobra.Command{
 		Use:   "server",
-		Short: "Start the Argo Server",
+		Short: "start the Argo Server",
 		Example: fmt.Sprintf(`
 See %s`, help.ArgoSever),
-		Run: func(c *cobra.Command, args []string) {
+		RunE: func(c *cobra.Command, args []string) error {
+			cmd.SetLogFormatter(logFormat)
 			stats.RegisterStackDumper()
 			stats.StartStatsTicker(5 * time.Minute)
 
 			config, err := client.GetConfig().ClientConfig()
-			errors.CheckError(err)
+			if err != nil {
+				return err
+			}
+			version := argo.GetVersion()
+			config = restclient.AddUserAgent(config, fmt.Sprintf("argo-workflows/%s argo-server", version.Version))
 			config.Burst = 30
 			config.QPS = 20.0
 
@@ -86,20 +95,31 @@ See %s`, help.ArgoSever),
 			var tlsConfig *tls.Config
 			if secure {
 				cer, err := tls.LoadX509KeyPair("argo-server.crt", "argo-server.key")
-				errors.CheckError(err)
-				// InsecureSkipVerify will not impact the TLS listener. It is needed for the server to speak to itself for GRPC.
-				tlsConfig = &tls.Config{Certificates: []tls.Certificate{cer}, InsecureSkipVerify: true}
+				if err != nil {
+					return err
+				}
+				tlsMinVersion, err := env.GetInt("TLS_MIN_VERSION", tls.VersionTLS12)
+				if err != nil {
+					return err
+				}
+				tlsConfig = &tls.Config{
+					Certificates:       []tls.Certificate{cer},
+					InsecureSkipVerify: true,
+					MinVersion:         uint16(tlsMinVersion),
+				}
 			} else {
-				log.Warn("You are running in insecure mode. Learn how to enable transport layer security: https://argoproj.github.io/argo/tls/")
+				log.Warn("You are running in insecure mode. Learn how to enable transport layer security: https://argoproj.github.io/argo-workflows/tls/")
 			}
 
 			modes := auth.Modes{}
 			for _, mode := range authModes {
 				err := modes.Add(mode)
-				errors.CheckError(err)
+				if err != nil {
+					return err
+				}
 			}
 			if reflect.DeepEqual(modes, auth.Modes{auth.Server: true}) {
-				log.Warn("You are running without client authentication. Learn how to enable client authentication: https://argoproj.github.io/argo/argo-server-auth-mode/")
+				log.Warn("You are running without client authentication. Learn how to enable client authentication: https://argoproj.github.io/argo-workflows/argo-server-auth-mode/")
 			}
 
 			opts := apiserver.ArgoServerOpts{
@@ -127,9 +147,14 @@ See %s`, help.ArgoSever),
 					}
 				}
 			}
+
 			server, err := apiserver.NewArgoServer(ctx, opts)
-			errors.CheckError(err)
+			if err != nil {
+				return err
+			}
+
 			server.Run(ctx, port, browserOpenFunc)
+			return nil
 		},
 	}
 
@@ -140,9 +165,11 @@ See %s`, help.ArgoSever),
 	}
 	command.Flags().StringVar(&baseHRef, "basehref", defaultBaseHRef, "Value for base href in index.html. Used if the server is running behind reverse proxy under subpath different from /. Defaults to the environment variable BASE_HREF.")
 	// "-e" for encrypt, like zip
-	command.Flags().BoolVarP(&secure, "secure", "e", false, "Whether or not we should listen on TLS.")
+	// We default to secure mode if we find certs available, otherwise we default to insecure mode.
+	_, err := os.Stat("argo-server.crt")
+	command.Flags().BoolVarP(&secure, "secure", "e", !os.IsNotExist(err), "Whether or not we should listen on TLS.")
 	command.Flags().BoolVar(&htst, "hsts", true, "Whether or not we should add a HTTP Secure Transport Security header. This only has effect if secure is enabled.")
-	command.Flags().StringArrayVar(&authModes, "auth-mode", []string{"server"}, "API server authentication mode. Any 1 or more length permutation of: client,server,sso")
+	command.Flags().StringArrayVar(&authModes, "auth-mode", []string{"client"}, "API server authentication mode. Any 1 or more length permutation of: client,server,sso")
 	command.Flags().StringVar(&configMap, "configmap", "workflow-controller-configmap", "Name of K8s configmap to retrieve workflow controller configuration")
 	command.Flags().BoolVar(&namespaced, "namespaced", false, "run as namespaced mode")
 	command.Flags().StringVar(&managedNamespace, "managed-namespace", "", "namespace that watches, default to the installation namespace")
@@ -151,5 +178,6 @@ See %s`, help.ArgoSever),
 	command.Flags().IntVar(&eventWorkerCount, "event-worker-count", 4, "how many event workers to run")
 	command.Flags().StringVar(&frameOptions, "x-frame-options", "DENY", "Set X-Frame-Options header in HTTP responses.")
 	command.Flags().StringVar(&accessControlAllowOrigin, "access-control-allow-origin", "", "Set Access-Control-Allow-Origin header in HTTP responses.")
+	command.Flags().StringVar(&logFormat, "log-format", "text", "The formatter to use for logs. One of: text|json")
 	return &command
 }

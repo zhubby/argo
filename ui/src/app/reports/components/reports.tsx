@@ -58,7 +58,7 @@ export class Reports extends BasePage<RouteComponentProps<any>, State> {
         super(props, context);
         this.state = {
             archivedWorkflows: !!this.queryParam('archivedWorkflows'),
-            namespace: this.props.match.params.namespace || '',
+            namespace: Utils.getNamespace(this.props.match.params.namespace) || '',
             labels: (this.queryParam('labels') || '').split(',').filter(v => v !== '')
         };
     }
@@ -119,9 +119,10 @@ export class Reports extends BasePage<RouteComponentProps<any>, State> {
     }
 
     private saveHistory() {
+        const newNamespace = Utils.managedNamespace ? '' : this.state.namespace;
         this.url = uiUrl(
-            'reports/' +
-                this.state.namespace +
+            'reports' +
+                (newNamespace ? '/' + newNamespace : '') +
                 '?labels=' +
                 this.state.labels.join(',') +
                 (this.state.archivedWorkflows ? '&archivedWorkflows=' + this.state.archivedWorkflows : '')
@@ -315,11 +316,12 @@ export class Reports extends BasePage<RouteComponentProps<any>, State> {
                     <p>
                         Use this page to find costly or time consuming workflows. You must label workflows you want to report on. If you use <b>workflow templates</b> or{' '}
                         <b>cron workflows</b>, your workflows will be automatically labelled. You'll probably need to enable the{' '}
-                        <a href='https://argoproj.github.io/argo/workflow-archive/'>workflow archive</a> to get long term data. Only the {limit} most recent workflows are shown.
+                        <a href='https://argoproj.github.io/argo-workflows/workflow-archive/'>workflow archive</a> to get long term data. Only the {limit} most recent workflows are
+                        shown.
                     </p>
                     <p>Select a namespace and at least one label to get a report.</p>
                     <p>
-                        <a href='https://argoproj.github.io/argo/cost-optimisation/'>Learn more about cost optimization</a>
+                        <a href='https://argoproj.github.io/argo-workflows/cost-optimisation/'>Learn more about cost optimization</a>
                     </p>
                 </ZeroState>
             );

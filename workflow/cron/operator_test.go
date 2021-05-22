@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,12 +9,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
 
-	"github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/pkg/client/clientset/versioned/fake"
-	"github.com/argoproj/argo/v3/workflow/metrics"
-	"github.com/argoproj/argo/v3/workflow/util"
+	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/fake"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
+	"github.com/argoproj/argo-workflows/v3/workflow/metrics"
+	"github.com/argoproj/argo-workflows/v3/workflow/util"
 )
 
 var scheduledWf = `
@@ -31,7 +32,7 @@ var scheduledWf = `
     schedule: '* * * * *'
     startingDeadlineSeconds: 30
     workflowSpec:
-      arguments: {}
+      
       entrypoint: whalesay
       templates:
       - container:
@@ -63,10 +64,7 @@ func TestRunOutstandingWorkflows(t *testing.T) {
 	time.Sleep(toWait)
 
 	var cronWf v1alpha1.CronWorkflow
-	err := yaml.Unmarshal([]byte(scheduledWf), &cronWf)
-	if err != nil {
-		panic(err)
-	}
+	v1alpha1.MustUnmarshal([]byte(scheduledWf), &cronWf)
 
 	// Second value at runtime should be 30-31
 
@@ -128,8 +126,7 @@ func TestRunOutstandingWorkflows(t *testing.T) {
 	assert.True(t, missedExecutionTime.IsZero())
 }
 
-type fakeLister struct {
-}
+type fakeLister struct{}
 
 func (f fakeLister) List() ([]*v1alpha1.Workflow, error) {
 	// Do nothing
@@ -147,7 +144,7 @@ var invalidWf = `
     schedule: '* * * * *'
     startingDeadlineSeconds: 30
     workflowSpec:
-      arguments: {}
+      
       entrypoint: whalesay
       templates:
       - container:
@@ -166,8 +163,7 @@ var invalidWf = `
 
 func TestCronWorkflowConditionSubmissionError(t *testing.T) {
 	var cronWf v1alpha1.CronWorkflow
-	err := yaml.Unmarshal([]byte(invalidWf), &cronWf)
-	assert.NoError(t, err)
+	v1alpha1.MustUnmarshal([]byte(invalidWf), &cronWf)
 
 	cs := fake.NewSimpleClientset()
 	testMetrics := metrics.New(metrics.ServerConfig{}, metrics.ServerConfig{})
@@ -202,10 +198,9 @@ spec:
   successfulJobsHistoryLimit: 4
   timezone: America/Los_Angeles
   workflowSpec:
-    arguments: {}
     entrypoint: whalesay
     templates:
-    - arguments: {}
+    - 
       container:
         args:
         - "\U0001F553 hello world"
@@ -222,8 +217,7 @@ spec:
 
 func TestSpecError(t *testing.T) {
 	var cronWf v1alpha1.CronWorkflow
-	err := yaml.Unmarshal([]byte(specError), &cronWf)
-	assert.NoError(t, err)
+	v1alpha1.MustUnmarshal([]byte(specError), &cronWf)
 
 	cs := fake.NewSimpleClientset()
 	testMetrics := metrics.New(metrics.ServerConfig{}, metrics.ServerConfig{})
@@ -236,11 +230,36 @@ func TestSpecError(t *testing.T) {
 		metrics:     testMetrics,
 	}
 
-	err = woc.validateCronWorkflow()
+	err := woc.validateCronWorkflow()
 	assert.Error(t, err)
 	assert.Len(t, woc.cronWf.Status.Conditions, 1)
 	submissionErrorCond := woc.cronWf.Status.Conditions[0]
 	assert.Equal(t, v1.ConditionTrue, submissionErrorCond.Status)
 	assert.Equal(t, v1alpha1.ConditionTypeSpecError, submissionErrorCond.Type)
 	assert.Contains(t, submissionErrorCond.Message, "cron schedule is malformed: end of range (12737123) above maximum (12): 12737123")
+}
+
+func TestScheduleTimeParam(t *testing.T) {
+	var cronWf v1alpha1.CronWorkflow
+	v1alpha1.MustUnmarshal([]byte(scheduledWf), &cronWf)
+
+	cs := fake.NewSimpleClientset()
+	testMetrics := metrics.New(metrics.ServerConfig{}, metrics.ServerConfig{})
+	woc := &cronWfOperationCtx{
+		wfClientset:       cs,
+		wfClient:          cs.ArgoprojV1alpha1().Workflows(""),
+		cronWfIf:          cs.ArgoprojV1alpha1().CronWorkflows(""),
+		cronWf:            &cronWf,
+		log:               logrus.WithFields(logrus.Fields{}),
+		metrics:           testMetrics,
+		scheduledTimeFunc: inferScheduledTime,
+	}
+	woc.Run()
+	wsl, err := cs.ArgoprojV1alpha1().Workflows("").List(context.Background(), v1.ListOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, wsl.Items.Len(), 1)
+	wf := wsl.Items[0]
+	assert.NotNil(t, wf)
+	assert.Len(t, wf.GetAnnotations(), 1)
+	assert.NotEmpty(t, wf.GetAnnotations()[common.AnnotationKeyCronWfScheduledTime])
 }

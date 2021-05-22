@@ -5,19 +5,21 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/util"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/util"
 )
 
 func TestWorkflowTemplateRef(t *testing.T) {
-	cancel, controller := newController(unmarshalWF(wfWithTmplRef), unmarshalWFTmpl(wfTmpl))
+	cancel, controller := newController(wfv1.MustUnmarshalWorkflow(wfWithTmplRef), wfv1.MustUnmarshalWorkflowTemplate(wfTmpl))
 	defer cancel()
 
 	ctx := context.Background()
-	woc := newWorkflowOperationCtx(unmarshalWF(wfWithTmplRef), controller)
+	woc := newWorkflowOperationCtx(wfv1.MustUnmarshalWorkflow(wfWithTmplRef), controller)
 	woc.operate(ctx)
-	assert.Equal(t, unmarshalWFTmpl(wfTmpl).Spec.WorkflowSpec.Templates, woc.execWf.Spec.Templates)
+	assert.Equal(t, wfv1.MustUnmarshalWorkflowTemplate(wfTmpl).Spec.WorkflowSpec.Templates, woc.execWf.Spec.Templates)
 	assert.Equal(t, woc.wf.Spec.Entrypoint, woc.execWf.Spec.Entrypoint)
 	// verify we copy these values
 	assert.Len(t, woc.volumes, 1, "volumes from workflow template")
@@ -27,8 +29,8 @@ func TestWorkflowTemplateRef(t *testing.T) {
 }
 
 func TestWorkflowTemplateRefWithArgs(t *testing.T) {
-	wf := unmarshalWF(wfWithTmplRef)
-	wftmpl := unmarshalWFTmpl(wfTmpl)
+	wf := wfv1.MustUnmarshalWorkflow(wfWithTmplRef)
+	wftmpl := wfv1.MustUnmarshalWorkflowTemplate(wfTmpl)
 
 	ctx := context.Background()
 	t.Run("CheckArgumentPassing", func(t *testing.T) {
@@ -45,11 +47,11 @@ func TestWorkflowTemplateRefWithArgs(t *testing.T) {
 		woc.operate(ctx)
 		assert.Equal(t, "test", woc.globalParams["workflow.parameters.param1"])
 	})
-
 }
+
 func TestWorkflowTemplateRefWithWorkflowTemplateArgs(t *testing.T) {
-	wf := unmarshalWF(wfWithTmplRef)
-	wftmpl := unmarshalWFTmpl(wfTmpl)
+	wf := wfv1.MustUnmarshalWorkflow(wfWithTmplRef)
+	wftmpl := wfv1.MustUnmarshalWorkflowTemplate(wfTmpl)
 
 	ctx := context.Background()
 	t.Run("CheckArgumentFromWFT", func(t *testing.T) {
@@ -65,21 +67,20 @@ func TestWorkflowTemplateRefWithWorkflowTemplateArgs(t *testing.T) {
 		woc := newWorkflowOperationCtx(wf, controller)
 		woc.operate(ctx)
 		assert.Equal(t, "test", woc.globalParams["workflow.parameters.param1"])
-
 	})
 
 	t.Run("CheckMergingWFDefaults", func(t *testing.T) {
 		wfDefaultActiveS := int64(5)
 		cancel, controller := newController(wf, wftmpl)
 		defer cancel()
-		controller.Config.WorkflowDefaults = &wfv1.Workflow{Spec: wfv1.WorkflowSpec{
-			ActiveDeadlineSeconds: &wfDefaultActiveS,
-		},
+		controller.Config.WorkflowDefaults = &wfv1.Workflow{
+			Spec: wfv1.WorkflowSpec{
+				ActiveDeadlineSeconds: &wfDefaultActiveS,
+			},
 		}
 		woc := newWorkflowOperationCtx(wf, controller)
 		woc.operate(ctx)
 		assert.Equal(t, wfDefaultActiveS, *woc.execWf.Spec.ActiveDeadlineSeconds)
-
 	})
 	t.Run("CheckMergingWFTandWF", func(t *testing.T) {
 		wfActiveS := int64(10)
@@ -89,9 +90,10 @@ func TestWorkflowTemplateRefWithWorkflowTemplateArgs(t *testing.T) {
 		wftmpl.Spec.ActiveDeadlineSeconds = &wftActiveS
 		cancel, controller := newController(wf, wftmpl)
 		defer cancel()
-		controller.Config.WorkflowDefaults = &wfv1.Workflow{Spec: wfv1.WorkflowSpec{
-			ActiveDeadlineSeconds: &wfDefaultActiveS,
-		},
+		controller.Config.WorkflowDefaults = &wfv1.Workflow{
+			Spec: wfv1.WorkflowSpec{
+				ActiveDeadlineSeconds: &wfDefaultActiveS,
+			},
 		}
 		wf.Spec.ActiveDeadlineSeconds = &wfActiveS
 		woc := newWorkflowOperationCtx(wf, controller)
@@ -118,7 +120,7 @@ spec:
 `
 
 func TestWorkflowTemplateRefInvalidWF(t *testing.T) {
-	wf := unmarshalWF(invalidWF)
+	wf := wfv1.MustUnmarshalWorkflow(invalidWF)
 	t.Run("ProcessWFWithStoredWFT", func(t *testing.T) {
 		cancel, controller := newController(wf)
 		defer cancel()
@@ -172,6 +174,7 @@ spec:
         command: [echo]
         args: ["{{workflows.parameters.a-a}} = {{workflows.parameters.g-g}}"]
 `
+
 var wfWithParam = `
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
@@ -198,8 +201,8 @@ spec:
 `
 
 func TestWorkflowTemplateRefParamMerge(t *testing.T) {
-	wf := unmarshalWF(wfWithParam)
-	wftmpl := unmarshalWFTmpl(wftWithParam)
+	wf := wfv1.MustUnmarshalWorkflow(wfWithParam)
+	wftmpl := wfv1.MustUnmarshalWorkflowTemplate(wftWithParam)
 
 	t.Run("CheckArgumentFromWF", func(t *testing.T) {
 		cancel, controller := newController(wf, wftmpl)
@@ -209,7 +212,6 @@ func TestWorkflowTemplateRefParamMerge(t *testing.T) {
 		woc.operate(ctx)
 		assert.Equal(t, wf.Spec.Arguments.Parameters, woc.wf.Spec.Arguments.Parameters)
 	})
-
 }
 
 var wftWithArtifact = `
@@ -267,8 +269,8 @@ spec:
 `
 
 func TestWorkflowTemplateRefGetArtifactsFromTemplate(t *testing.T) {
-	wf := unmarshalWF(wfWithTemplateWithArtifact)
-	wftmpl := unmarshalWFTmpl(wftWithArtifact)
+	wf := wfv1.MustUnmarshalWorkflow(wfWithTemplateWithArtifact)
+	wftmpl := wfv1.MustUnmarshalWorkflowTemplate(wftWithArtifact)
 
 	t.Run("CheckArtifactArgumentFromWF", func(t *testing.T) {
 		cancel, controller := newController(wf, wftmpl)
@@ -282,4 +284,155 @@ func TestWorkflowTemplateRefGetArtifactsFromTemplate(t *testing.T) {
 		assert.Equal(t, "binary-file", woc.execWf.Spec.Arguments.Artifacts[1].Name)
 		assert.Equal(t, "data-file", woc.execWf.Spec.Arguments.Artifacts[2].Name)
 	})
+}
+
+func TestWorkflowTemplateRefWithShutdownAndSuspend(t *testing.T) {
+	t.Run("EntryPointMissingInStoredWfSpec", func(t *testing.T) {
+		wf := wfv1.MustUnmarshalWorkflow(wfWithTmplRef)
+		cancel, controller := newController(wf, wfv1.MustUnmarshalWorkflowTemplate(wfTmpl))
+		defer cancel()
+		ctx := context.Background()
+		woc := newWorkflowOperationCtx(wf, controller)
+		woc.operate(ctx)
+		assert.Nil(t, woc.wf.Status.StoredWorkflowSpec.Suspend)
+		wf1 := woc.wf.DeepCopy()
+		// Updating Pod state
+		makePodsPhase(ctx, woc, apiv1.PodPending)
+		wf1.Status.StoredWorkflowSpec.Entrypoint = ""
+		woc1 := newWorkflowOperationCtx(wf1, controller)
+		woc1.operate(ctx)
+		assert.NotNil(t, woc1.wf.Status.StoredWorkflowSpec.Entrypoint)
+		assert.Equal(t, woc.wf.Spec.Entrypoint, woc1.wf.Status.StoredWorkflowSpec.Entrypoint)
+	})
+
+	t.Run("WorkflowTemplateRefWithSuspend", func(t *testing.T) {
+		wf := wfv1.MustUnmarshalWorkflow(wfWithTmplRef)
+		cancel, controller := newController(wf, wfv1.MustUnmarshalWorkflowTemplate(wfTmpl))
+		defer cancel()
+		ctx := context.Background()
+		woc := newWorkflowOperationCtx(wf, controller)
+		woc.operate(ctx)
+		assert.Nil(t, woc.wf.Status.StoredWorkflowSpec.Suspend)
+		wf1 := woc.wf.DeepCopy()
+		// Updating Pod state
+		makePodsPhase(ctx, woc, apiv1.PodPending)
+		wf1.Spec.Suspend = pointer.BoolPtr(true)
+		woc1 := newWorkflowOperationCtx(wf1, controller)
+		woc1.operate(ctx)
+		assert.NotNil(t, woc1.wf.Status.StoredWorkflowSpec.Suspend)
+		assert.True(t, *woc1.wf.Status.StoredWorkflowSpec.Suspend)
+	})
+	t.Run("WorkflowTemplateRefWithShutdownTerminate", func(t *testing.T) {
+		wf := wfv1.MustUnmarshalWorkflow(wfWithTmplRef)
+		cancel, controller := newController(wf, wfv1.MustUnmarshalWorkflowTemplate(wfTmpl))
+		defer cancel()
+		ctx := context.Background()
+		woc := newWorkflowOperationCtx(wf, controller)
+		woc.operate(ctx)
+		assert.Empty(t, woc.wf.Status.StoredWorkflowSpec.Shutdown)
+		wf1 := woc.wf.DeepCopy()
+		// Updating Pod state
+		makePodsPhase(ctx, woc, apiv1.PodPending)
+		wf1.Spec.Shutdown = wfv1.ShutdownStrategyTerminate
+		woc1 := newWorkflowOperationCtx(wf1, controller)
+		woc1.operate(ctx)
+		assert.NotEmpty(t, woc1.wf.Status.StoredWorkflowSpec.Shutdown)
+		assert.Equal(t, wfv1.ShutdownStrategyTerminate, woc1.wf.Status.StoredWorkflowSpec.Shutdown)
+		for _, node := range woc1.wf.Status.Nodes {
+			if assert.NotNil(t, node) {
+				assert.Contains(t, node.Message, "workflow shutdown with strategy")
+				assert.Contains(t, node.Message, "Terminate")
+			}
+		}
+	})
+	t.Run("WorkflowTemplateRefWithShutdownStop", func(t *testing.T) {
+		wf := wfv1.MustUnmarshalWorkflow(wfWithTmplRef)
+		cancel, controller := newController(wf, wfv1.MustUnmarshalWorkflowTemplate(wfTmpl))
+		defer cancel()
+		ctx := context.Background()
+		woc := newWorkflowOperationCtx(wf, controller)
+		woc.operate(ctx)
+		assert.Empty(t, woc.wf.Status.StoredWorkflowSpec.Shutdown)
+		wf1 := woc.wf.DeepCopy()
+		// Updating Pod state
+		makePodsPhase(ctx, woc, apiv1.PodPending)
+		wf1.Spec.Shutdown = wfv1.ShutdownStrategyStop
+		woc1 := newWorkflowOperationCtx(wf1, controller)
+		woc1.operate(ctx)
+		assert.NotEmpty(t, woc1.wf.Status.StoredWorkflowSpec.Shutdown)
+		assert.Equal(t, wfv1.ShutdownStrategyStop, woc1.wf.Status.StoredWorkflowSpec.Shutdown)
+		for _, node := range woc1.wf.Status.Nodes {
+			if assert.NotNil(t, node) {
+				assert.Contains(t, node.Message, "workflow shutdown with strategy")
+				assert.Contains(t, node.Message, "Stop")
+			}
+		}
+	})
+}
+
+var suspendwf = `apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: workflow-template-whalesay-template-z56dm
+  namespace: default
+spec:
+  arguments:
+    parameters:
+    - name: message
+      value: tt
+  entrypoint: whalesay-template
+  suspend: true
+  workflowTemplateRef:
+    name: workflow-template-whalesay-template
+status:
+  artifactRepositoryRef:
+    default: true
+  conditions:
+  - status: "False"
+    type: PodRunning
+  finishedAt: null
+  phase: Running
+  progress: 0/0
+  startedAt: "2021-05-13T22:56:17Z"
+  storedTemplates:
+    namespaced/workflow-template-whalesay-template/whalesay-template:
+      container:
+        args:
+        - sleep
+        command:
+        - cowsay
+        image: docker/whalesay
+        name: ""
+      name: whalesay-template
+  storedWorkflowTemplateSpec:
+    entrypoint: whalesay-template
+    suspend: true
+    templates:
+    - container:
+        args:
+        - sleep
+        command:
+        - cowsay
+        image: docker/whalesay
+        name: ""
+      name: whalesay-template
+    volumes:
+    - emptyDir: {}
+      name: data
+    workflowTemplateRef:
+      name: workflow-template-whalesay-template
+`
+
+func TestSuspendResumeWorkflowTemplateRef(t *testing.T) {
+	wf := wfv1.MustUnmarshalWorkflow(suspendwf)
+	cancel, controller := newController(wf, wfv1.MustUnmarshalWorkflowTemplate(wfTmpl))
+	defer cancel()
+	ctx := context.Background()
+	woc := newWorkflowOperationCtx(wf, controller)
+	woc.operate(ctx)
+	assert.True(t, *woc.wf.Status.StoredWorkflowSpec.Suspend)
+	woc.wf.Spec.Suspend = nil
+	woc = newWorkflowOperationCtx(woc.wf, controller)
+	woc.operate(ctx)
+	assert.Nil(t, woc.wf.Status.StoredWorkflowSpec.Suspend)
 }

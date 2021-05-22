@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo/v3/test/e2e/fixtures"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/test/e2e/fixtures"
 )
 
 type ArtifactsSuite struct {
@@ -23,10 +23,7 @@ func (s *ArtifactsSuite) TestInputOnMount() {
 		When().
 		SubmitWorkflow().
 		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded)
 }
 
 func (s *ArtifactsSuite) TestOutputOnMount() {
@@ -34,24 +31,16 @@ func (s *ArtifactsSuite) TestOutputOnMount() {
 		Workflow("@testdata/output-on-mount-workflow.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded)
 }
 
 func (s *ArtifactsSuite) TestOutputOnInput() {
-	s.Need(fixtures.BaseLayerArtifacts) // I believe this would work on both K8S and Kubelet, not validation does not allow it
+	s.Need(fixtures.BaseLayerArtifacts) // I believe this would work on both K8S and Kubelet, but validation does not allow it
 	s.Given().
 		Workflow("@testdata/output-on-input-workflow.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded)
 }
 
 func (s *ArtifactsSuite) TestArtifactPassing() {
@@ -60,24 +49,17 @@ func (s *ArtifactsSuite) TestArtifactPassing() {
 		Workflow("@smoke/artifact-passing.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded)
 }
 
 func (s *ArtifactsSuite) TestDefaultParameterOutputs() {
 	s.Need(fixtures.BaseLayerArtifacts)
-	s.Need(fixtures.None(fixtures.PNS))
 	s.Given().
 		Workflow(`
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: default-params
-  labels:
-    argo-e2e: true
+  generateName: default-params-
 spec:
   entrypoint: start
   templates:
@@ -107,10 +89,9 @@ spec:
 `).
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
+		WaitForWorkflow(fixtures.ToBeSucceeded).
 		Then().
 		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
 			assert.True(t, status.Nodes.Any(func(node wfv1.NodeStatus) bool {
 				if node.Outputs != nil {
 					for _, param := range node.Outputs.Parameters {
@@ -130,23 +111,22 @@ func (s *ArtifactsSuite) TestSameInputOutputPathOptionalArtifact() {
 		Workflow("@testdata/same-input-output-path-optional.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
-		Then().
-		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
-		})
+		WaitForWorkflow(fixtures.ToBeSucceeded)
 }
 
-func (s *ArtifactsSuite) TestOutputArtifactS3BucketCreationEnabled() {
-	s.Need(fixtures.BaseLayerArtifacts)
+func (s *ArtifactsSuite) TestOutputResult() {
 	s.Given().
-		Workflow("@testdata/output-artifact-with-s3-bucket-creation-enabled.yaml").
+		Workflow("@testdata/output-result-workflow.yaml").
 		When().
 		SubmitWorkflow().
-		WaitForWorkflow().
+		WaitForWorkflow(fixtures.ToBeSucceeded).
 		Then().
 		ExpectWorkflow(func(t *testing.T, _ *metav1.ObjectMeta, status *wfv1.WorkflowStatus) {
-			assert.Equal(t, wfv1.WorkflowSucceeded, status.Phase)
+			n := status.Nodes.FindByDisplayName("a")
+			if assert.NotNil(t, n) {
+				assert.NotNil(t, n.Outputs.ExitCode)
+				assert.NotNil(t, n.Outputs.Result)
+			}
 		})
 }
 

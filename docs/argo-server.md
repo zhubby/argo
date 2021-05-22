@@ -4,6 +4,9 @@
 
 > v2.5 and after
 
+!!! Warning "HTTP vs HTTPS"
+    Since v3.0 the Argo Server listens for HTTPS requests, rather than HTTP.
+
 The Argo Server is a server that exposes an API and UI for workflows. You'll need to use this if you want to [offload large workflows](offloading-large-workflows.md) or the [workflow archive](workflow-archive.md).
 
 You can run this in either "hosted" or "local" mode.
@@ -17,7 +20,7 @@ Use this mode if:
 * You want a drop-in replacement for the Argo UI.
 * If you need to prevent users from directly accessing the database.
 
-Hosted mode is provided as part of the standard [manifests](https://github.com/argoproj/argo/blob/master/manifests), [specifically in argo-server-deployment.yaml](https://github.com/argoproj/argo/blob/master/manifests/base/argo-server/argo-server-deployment.yaml) .
+Hosted mode is provided as part of the standard [manifests](https://github.com/argoproj/argo-workflows/blob/master/manifests), [specifically in argo-server-deployment.yaml](https://github.com/argoproj/argo-workflows/blob/master/manifests/base/argo-server/argo-server-deployment.yaml) .
 
 ## Local Mode
 
@@ -32,7 +35,8 @@ To run locally:
 argo server
 ```
 
-This will start a server on port 2746 which you can view at [http://localhost:2746](http://localhost:2746).
+This will start a server on port 2746 which you can view at [https://localhost:2746](https://localhost:2746).
+
 
 ## Options
 
@@ -58,8 +62,7 @@ See [TLS](tls.md).
 
 ### SSO 
 
-See [SSO](argo-server-sso.md).
-
+See [SSO](argo-server-sso.md). See [here](argo-server-sso-argocd.md) about sharing ArgoCD's Dex with ArgoWorkflows.
 
 ## Access the Argo Workflows UI
 
@@ -72,7 +75,7 @@ following:
 kubectl -n argo port-forward svc/argo-server 2746:2746
 ```
 
-Then visit: http://127.0.0.1:2746
+Then visit: https://127.0.0.1:2746
 
 
 ### Expose a `LoadBalancer`
@@ -145,4 +148,4 @@ spec:
             path: /argo(/|$)(.*)
 ```
 
-[Learn more](https://github.com/argoproj/argo/issues/3080)
+[Learn more](https://github.com/argoproj/argo-workflows/issues/3080)

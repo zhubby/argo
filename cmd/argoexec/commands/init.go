@@ -9,7 +9,7 @@ import (
 )
 
 func NewInitCommand() *cobra.Command {
-	var command = cobra.Command{
+	command := cobra.Command{
 		Use:   "init",
 		Short: "Load artifacts",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -28,6 +28,10 @@ func loadArtifacts(ctx context.Context) error {
 	defer wfExecutor.HandleError(ctx)
 	defer stats.LogStats()
 
+	if err := wfExecutor.Init(); err != nil {
+		wfExecutor.AddError(err)
+		return err
+	}
 	// Download input artifacts
 	err := wfExecutor.StageFiles()
 	if err != nil {

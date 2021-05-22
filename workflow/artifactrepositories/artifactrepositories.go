@@ -3,6 +3,7 @@ package artifactrepositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -11,11 +12,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/yaml"
 
-	"github.com/argoproj/argo/v3/config"
-	wfv1 "github.com/argoproj/argo/v3/pkg/apis/workflow/v1alpha1"
-	errorsutil "github.com/argoproj/argo/v3/util/errors"
-	"github.com/argoproj/argo/v3/util/retry"
-	waitutil "github.com/argoproj/argo/v3/util/wait"
+	"github.com/argoproj/argo-workflows/v3/config"
+	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	errorsutil "github.com/argoproj/argo-workflows/v3/util/errors"
+	"github.com/argoproj/argo-workflows/v3/util/retry"
+	waitutil "github.com/argoproj/argo-workflows/v3/util/wait"
 )
 
 //go:generate mockery -name Interface
@@ -52,7 +53,7 @@ func (s *artifactRepositories) Resolve(ctx context.Context, ref *wfv1.ArtifactRe
 	}
 	for _, r := range refs {
 		resolvedRef, _, err := s.get(ctx, r)
-		if apierr.IsNotFound(err) {
+		if err != nil && (apierr.IsNotFound(err) || strings.Contains(err.Error(), "config map missing key")) {
 			continue
 		}
 		if err != nil {
@@ -61,7 +62,7 @@ func (s *artifactRepositories) Resolve(ctx context.Context, ref *wfv1.ArtifactRe
 		log.WithField("artifactRepositoryRef", r).Info("resolved artifact repository")
 		return resolvedRef, nil
 	}
-	return nil, fmt.Errorf("failed to find any artifact repository - should never happen")
+	return nil, fmt.Errorf(`failed to find any artifact repository for artifact repository ref "%v"`, ref)
 }
 
 func (s *artifactRepositories) Get(ctx context.Context, ref *wfv1.ArtifactRepositoryRefStatus) (*config.ArtifactRepository, error) {
@@ -87,7 +88,7 @@ func (s *artifactRepositories) get(ctx context.Context, ref *wfv1.ArtifactReposi
 	key := ref.GetKeyOr(cm.Annotations["workflows.argoproj.io/default-artifact-repository"])
 	value, ok := cm.Data[key]
 	if !ok {
-		return nil, nil, fmt.Errorf(`config map missing key %s for artifact repository ref "%v"`, ref, key)
+		return nil, nil, fmt.Errorf(`config map missing key "%s" for artifact repository ref "%v"`, key, ref)
 	}
 	repo := &config.ArtifactRepository{}
 	// we need the fully filled out ref so we can store it in the workflow status and it will never change
