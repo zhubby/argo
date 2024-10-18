@@ -14,8 +14,14 @@ type Interface interface {
 	CronWorkflows() CronWorkflowInformer
 	// Workflows returns a WorkflowInformer.
 	Workflows() WorkflowInformer
+	// WorkflowArtifactGCTasks returns a WorkflowArtifactGCTaskInformer.
+	WorkflowArtifactGCTasks() WorkflowArtifactGCTaskInformer
 	// WorkflowEventBindings returns a WorkflowEventBindingInformer.
 	WorkflowEventBindings() WorkflowEventBindingInformer
+	// WorkflowTaskResults returns a WorkflowTaskResultInformer.
+	WorkflowTaskResults() WorkflowTaskResultInformer
+	// WorkflowTaskSets returns a WorkflowTaskSetInformer.
+	WorkflowTaskSets() WorkflowTaskSetInformer
 	// WorkflowTemplates returns a WorkflowTemplateInformer.
 	WorkflowTemplates() WorkflowTemplateInformer
 }
@@ -46,9 +52,24 @@ func (v *version) Workflows() WorkflowInformer {
 	return &workflowInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
+// WorkflowArtifactGCTasks returns a WorkflowArtifactGCTaskInformer.
+func (v *version) WorkflowArtifactGCTasks() WorkflowArtifactGCTaskInformer {
+	return &workflowArtifactGCTaskInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // WorkflowEventBindings returns a WorkflowEventBindingInformer.
 func (v *version) WorkflowEventBindings() WorkflowEventBindingInformer {
 	return &workflowEventBindingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// WorkflowTaskResults returns a WorkflowTaskResultInformer.
+func (v *version) WorkflowTaskResults() WorkflowTaskResultInformer {
+	return &workflowTaskResultInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// WorkflowTaskSets returns a WorkflowTaskSetInformer.
+func (v *version) WorkflowTaskSets() WorkflowTaskSetInformer {
+	return &workflowTaskSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // WorkflowTemplates returns a WorkflowTemplateInformer.

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TwinProduction/go-color"
+	"github.com/TwiN/go-color"
+
+	"github.com/argoproj/argo-workflows/v3/cmd/argo/commands/common"
 )
 
 const (
@@ -13,11 +15,8 @@ const (
 
 type formatterPretty struct{}
 
-const (
-	underline = "\x1b[4m"
-)
-
 func (f formatterPretty) Format(l *LintResult) string {
+	setColorize()
 	if !l.Linted {
 		return ""
 	}
@@ -27,7 +26,7 @@ func (f formatterPretty) Format(l *LintResult) string {
 	}
 
 	sb := &strings.Builder{}
-	fmt.Fprintf(sb, "%s:\n", color.Ize(underline, l.File)) // print source name
+	fmt.Fprintf(sb, "%s:\n", color.Ize(color.Underline, l.File)) // print source name
 
 	for _, e := range l.Errs {
 		fmt.Fprintf(sb, "%s%s %s\n", lintIndentation, color.Ize(color.Red, "✖"), e)
@@ -38,6 +37,7 @@ func (f formatterPretty) Format(l *LintResult) string {
 }
 
 func (f formatterPretty) Summarize(l *LintResults) string {
+	setColorize()
 	if l.Success {
 		return fmt.Sprintf("%s no linting errors found!\n", color.Ize(color.Green, "✔"))
 	}
@@ -52,4 +52,8 @@ func (f formatterPretty) Summarize(l *LintResults) string {
 	}
 
 	return fmt.Sprintln(color.Ize(color.Red, fmt.Sprintf("✖ %d linting errors found!", totErr)))
+}
+
+func setColorize() {
+	color.Toggle(!common.NoColor)
 }

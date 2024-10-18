@@ -27,4 +27,15 @@ const (
 	ClusterWorkflowTemplateShortName string = "cwftmpl"
 	ClusterWorkflowTemplateFullName  string = ClusterWorkflowTemplatePlural + "." + Group
 	WorkflowEventBindingKind         string = "WorkflowEventBinding"
+	WorkflowTaskSetKind              string = "WorkflowTaskSet"
+	WorkflowTaskSetSingular          string = "workflowtaskset"
+	WorkflowTaskSetPlural            string = "workflowtasksets"
+	WorkflowTaskSetShortName         string = "wfts"
+	WorkflowTaskSetFullName          string = WorkflowTaskSetPlural + "." + Group
+	WorkflowTaskResultKind           string = "WorkflowTaskResult"
+	WorkflowArtifactGCTaskKind       string = "WorkflowArtifactGCTask"
+	WorkflowArtifactGCTaskSingular   string = "workflowartifactgctask"
+	WorkflowArtifactGCTaskPlural     string = "workflowartifactgctasks"
+	WorkflowArtifactGCTaskShortName  string = "wfat"
+	WorkflowArtifactGCTaskFullName   string = WorkflowArtifactGCTaskPlural + "." + Group
 )

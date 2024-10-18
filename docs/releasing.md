@@ -1,96 +1,72 @@
 # Release Instructions
 
-Allow 1h to do a release.
+## Cherry-Picking Fixes
 
-## Preparation
+✋ Before you start, make sure you have created a release branch (e.g. `release-3.3`) and it's passing CI.
+Please make sure that all patch releases (e.g. `v3.3.5`) should be released from their associated minor release branches (e.g. `release-3.3`)
+to work well with our versioned website.
 
-* [ ] Cherry-pick your changes from master onto the release branch.
-* [ ] The release branch should be green in CI before you start.
-
-## Release
-
-Releasing requires a clean tree state, so back-up any untracked files in your Git directory.
-
-**Only once your files are backed up**, run:
-
-    git clean -fdx  # WARNING: Will delete untracked files!
-
-To generate new manifests and perform basic checks:
-
-    make prepare-release -B VERSION=v2.11.5
-
-Publish the images and local Git changes (disabling K3D as this is faster and more reliable for releases):
-
-    make publish-release K3D=false VERSION=v2.11.5
-    
-Wait 1h to 2h.
-
-* [ ] Check the images were pushed successfully.
-* [ ] Check the correct versions are printed.
-* [ ] Check the executor was correctly built.
-
-```
-docker run argoproj/argoexec:v2.11.5 version
-docker run argoproj/workflow-controller:v2.11.5 version
-docker run argoproj/argocli:v2.11.5 version
-```
-
-* [ ] Check the manifests contain the correct tags: https://raw.githubusercontent.com/argoproj/argo-workflows/v2.11.5/manifests/install.yaml
-
-* [ ] Check the manifests apply: `kubectl -n argo apply -f https://raw.githubusercontent.com/argoproj/argo-workflows/v2.11.5/manifests/install.yaml`
-
-### Release Notes
-
-Create [the release](https://github.com/argoproj/argo-workflows/releases) in Github. You can get some text for this using [Github Toolkit](https://github.com/alexec/github-toolkit):
-
-    ght relnote v2.7.3..v2.11.4
-
-Release notes checklist:
-
-* [ ] All breaking changes are listed with migration steps
-* [ ] The release notes identify every publicly known vulnerability with a CVE assignment 
-
-### Update Stable Tag
-
-If this is GA:
-
-* [ ] Update the `stable` tag
-
-```
-git tag -f stable
-git push -f origin stable
-```
-
-* [ ] Check the manifests contain the correct tags: https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/install.yaml
-
-### Update Homebrew
-
-If this is GA:
-
-* [ ] Update the Homebrew formula.
+Then get a list of commits you may want to cherry-pick:
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN=$GITHUB_TOKEN
-brew bump-formula-pr argo --version 2.11.5
+./hack/cherry-pick.sh release-3.3 "fix"
+./hack/cherry-pick.sh release-3.3 "chore(deps)"
+./hack/cherry-pick.sh release-3.3 "build"
+./hack/cherry-pick.sh release-3.3 "ci"
 ```
 
-* [ ] Check that Homebrew was successfully updated after the PR was merged:
- 
- ```
- brew upgrade argo
- /usr/local/bin/argo version
- ```
+To automatically cherry-pick, run the following:
 
-### Update Java SDK
-
-If this is GA:
-
-* [ ] Update the Java SDK formula.
-
-```
-git clone git@github.com:argoproj-labs/argo-client-java.git
-cd argo-client-java
-make publish VERSION=v2.11.5
+```bash
+./hack/cherry-pick.sh release-3.3 "fix" false
 ```
 
-* [ ] Check package published: https://github.com/argoproj-labs/argo-client-java/packages
+Then look for "failed to cherry-pick" in the log to find commits that fail to be cherry-picked and decide if a
+manual patch is necessary.
+
+Ignore:
+
+* Fixes for features only on `main`.
+* Dependency upgrades, unless they fix known security issues.
+* Build or CI improvements, unless the release pipeline is blocked without them.
+
+Cherry-pick the first commit. Run `make test` locally before pushing. If the build timeouts the build caches may have
+gone, try re-running.
+
+Don't cherry-pick another commit until the CI passes. It is harder to find the cause of a new failed build if the last
+build failed too.
+
+Cherry-picking commits one-by-one and then waiting for the CI will take a long time. Instead, cherry-pick each commit then
+run `make test` locally before pushing.
+
+## Publish Release
+
+✋ Before you start, make sure the branch is passing CI.
+
+Push a new tag to the release branch. E.g.:
+
+```bash
+git tag v3.3.4
+git push upstream v3.3.4 # or origin if you do not use upstream
+```
+
+GitHub Actions will automatically build and publish your release. This takes about 1h. Set your self a reminder to check
+this was successful.
+
+## Update Changelog
+
+Once the tag is published, GitHub Actions will automatically open a PR to update the changelog. Once the PR is ready,
+you can approve it, enable auto-merge, and then run the following to force trigger the CI build:
+
+```bash
+git branch -D create-pull-request/changelog
+git fetch upstream
+git checkout --track upstream/create-pull-request/changelog
+git commit -s --allow-empty -m "chore: Force trigger CI"
+git push upstream create-pull-request/changelog
+```
+
+## Announce on Slack
+
+Once the changelog updates have been merged, you should announce on our Slack channels, [`#argo-workflows`](https://cloud-native.slack.com/archives/C01QW9QSSSK) and [`#argo-announcements`](https://cloud-native.slack.com/archives/C02165G1L48).
+See [previous](https://cloud-native.slack.com/archives/C02165G1L48/p1701112932434469) [announcements](https://cloud-native.slack.com/archives/C01QW9QSSSK/p1701112957127489) as examples of what to write in the patch announcement.

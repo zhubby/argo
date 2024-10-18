@@ -1,9 +1,10 @@
 import * as React from 'react';
 
-import {NODE_PHASE, NodeStatus} from '../../../../models';
+import {ArtifactRepositoryRefStatus, NODE_PHASE, NodeStatus} from '../../../../models';
+import {nodeArtifacts} from '../../../shared/artifacts';
 import {GraphPanel} from '../../../shared/components/graph/graph-panel';
 import {Graph} from '../../../shared/components/graph/types';
-import {Utils} from '../../../shared/utils';
+import {shortNodeName} from '../../utils';
 import {genres} from './genres';
 import {getCollapsedNodeName, getMessage, getNodeParent, isCollapsedNode} from './graph/collapsible-node';
 import {icons} from './icons';
@@ -11,10 +12,12 @@ import {WorkflowDagRenderOptionsPanel} from './workflow-dag-render-options-panel
 
 export interface WorkflowDagRenderOptions {
     expandNodes: Set<string>;
+    showArtifacts: boolean;
 }
 
 interface WorkflowDagProps {
     workflowName: string;
+    artifactRepositoryRef?: ArtifactRepositoryRefStatus;
     nodes: {[nodeId: string]: NodeStatus};
     selectedNodeId?: string;
     nodeSize?: number;
@@ -36,7 +39,7 @@ function getNodeLabelTemplateName(n: NodeStatus): string {
 function nodeLabel(n: NodeStatus) {
     const phase = n.type === 'Suspend' && n.phase === 'Running' ? 'Suspended' : n.phase;
     return {
-        label: Utils.shortNodeName(n),
+        label: shortNodeName(n),
         genre: n.type,
         icon: icons[phase] || icons.Pending,
         progress: phase === 'Running' && progress(n),
@@ -47,6 +50,7 @@ function nodeLabel(n: NodeStatus) {
 
 const classNames = (() => {
     const v: {[label: string]: boolean} = {
+        Artifact: true,
         Suspended: true,
         Collapsed: true
     };
@@ -60,8 +64,13 @@ export class WorkflowDag extends React.Component<WorkflowDagProps, WorkflowDagRe
     constructor(props: Readonly<WorkflowDagProps>) {
         super(props);
         this.state = {
-            expandNodes: new Set()
+            expandNodes: new Set(),
+            showArtifacts: localStorage.getItem('showArtifacts') !== 'false'
         };
+    }
+
+    private get artifactRepository() {
+        return this.props.artifactRepositoryRef?.artifactRepository || {};
     }
 
     public render() {
@@ -92,6 +101,7 @@ export class WorkflowDag extends React.Component<WorkflowDagProps, WorkflowDagRe
     }
 
     private saveOptions(newChanges: WorkflowDagRenderOptions) {
+        localStorage.setItem('showArtifacts', newChanges.showArtifacts ? 'true' : 'false');
         this.setState(newChanges);
     }
 
@@ -201,7 +211,7 @@ export class WorkflowDag extends React.Component<WorkflowDagProps, WorkflowDagRe
                 consideredChildren.add(item.nodeName);
 
                 const node: NodeStatus = this.props.nodes[item.nodeName];
-                if (!node || node.phase === NODE_PHASE.OMITTED) {
+                if (!node) {
                     continue;
                 }
 
@@ -235,6 +245,33 @@ export class WorkflowDag extends React.Component<WorkflowDagProps, WorkflowDagRe
             // Traverse the onExit tree starting from the onExit node itself
             traverse(onExitRoot);
         }
+
+        if (this.state.showArtifacts) {
+            Object.values(this.props.nodes || {})
+                .filter(node => nodes.has(node.id))
+                .forEach(node => {
+                    nodeArtifacts(node, this.artifactRepository)
+                        .filter(({name}) => !name.endsWith('-logs'))
+                        // only show files or directories
+                        .filter(({filename, key}) => filename.includes('.') || key.endsWith('/'))
+                        .forEach(a => {
+                            nodes.set(a.urn, {
+                                genre: 'Artifact',
+                                label: a.filename,
+                                icon: icons.Artifact,
+                                classNames: 'Artifact'
+                            });
+                            const input = a.artifactNameDiscriminator === 'input';
+                            edges.set(
+                                {v: input ? a.urn : node.id, w: input ? node.id : a.urn},
+                                {
+                                    label: a.name,
+                                    classNames: 'related'
+                                }
+                            );
+                        });
+                });
+        }
     }
 
     private selectNode(nodeId: string) {
@@ -255,13 +292,16 @@ export class WorkflowDag extends React.Component<WorkflowDagProps, WorkflowDagRe
 
     private getOutboundNodes(nodeID: string): string[] {
         const node = this.getNode(nodeID);
-        if (node.type === 'Pod' || node.type === 'Skipped') {
+        if (node === null || node === undefined) {
+            return [];
+        }
+        if (node?.type === 'Pod' || node?.type === 'Skipped') {
             return [node.id];
         }
         let outbound = Array<string>();
         for (const outboundNodeID of node.outboundNodes || []) {
             const outNode = this.getNode(outboundNodeID);
-            if (outNode.type === 'Pod') {
+            if (outNode?.type === 'Pod') {
                 outbound.push(outboundNodeID);
             } else {
                 outbound = outbound.concat(this.getOutboundNodes(outboundNodeID));

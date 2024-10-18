@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/argoproj/argo-workflows/v3/server/event/dispatch"
 	"github.com/argoproj/argo-workflows/v3/util/instanceid"
 	"github.com/argoproj/argo-workflows/v3/workflow/events"
+
+	sutils "github.com/argoproj/argo-workflows/v3/server/utils"
 )
 
 type Controller struct {
@@ -22,12 +25,13 @@ type Controller struct {
 	// a channel for operations to be executed async on
 	operationQueue chan dispatch.Operation
 	workerCount    int
+	asyncDispatch  bool
 }
 
 var _ eventpkg.EventServiceServer = &Controller{}
 
-func NewController(instanceIDService instanceid.Service, eventRecorderManager events.EventRecorderManager, operationQueueSize, workerCount int) *Controller {
-	log.WithFields(log.Fields{"workerCount": workerCount, "operationQueueSize": operationQueueSize}).Info("Creating event controller")
+func NewController(instanceIDService instanceid.Service, eventRecorderManager events.EventRecorderManager, operationQueueSize, workerCount int, asyncDispatch bool) *Controller {
+	log.WithFields(log.Fields{"workerCount": workerCount, "operationQueueSize": operationQueueSize, "asyncDispatch": asyncDispatch}).Info("Creating event controller")
 
 	return &Controller{
 		instanceIDService:    instanceIDService,
@@ -35,6 +39,7 @@ func NewController(instanceIDService instanceid.Service, eventRecorderManager ev
 		//  so we can have `operationQueueSize` operations outstanding before we start putting back pressure on the senders
 		operationQueue: make(chan dispatch.Operation, operationQueueSize),
 		workerCount:    workerCount,
+		asyncDispatch:  asyncDispatch,
 	}
 }
 
@@ -46,8 +51,7 @@ func (s *Controller) Run(stopCh <-chan struct{}) {
 		go func() {
 			defer wg.Done()
 			for operation := range s.operationQueue {
-				ctx := context.Background()
-				operation.Dispatch(ctx)
+				_ = operation.Dispatch(context.Background())
 			}
 		}()
 		wg.Add(1)
@@ -70,19 +74,26 @@ func (s *Controller) ReceiveEvent(ctx context.Context, req *eventpkg.EventReques
 
 	list, err := auth.GetWfClient(ctx).ArgoprojV1alpha1().WorkflowEventBindings(req.Namespace).List(ctx, options)
 	if err != nil {
-		return nil, err
+		return nil, sutils.ToStatusError(err, codes.Internal)
 	}
 
 	operation, err := dispatch.NewOperation(ctx, s.instanceIDService, s.eventRecorderManager.Get(req.Namespace), list.Items, req.Namespace, req.Discriminator, req.Payload)
 	if err != nil {
-		return nil, err
+		return nil, sutils.ToStatusError(err, codes.Internal)
+	}
+
+	if !s.asyncDispatch {
+		if err := operation.Dispatch(ctx); err != nil {
+			return nil, sutils.ToStatusError(err, codes.Internal)
+		}
+		return &eventpkg.EventResponse{}, nil
 	}
 
 	select {
 	case s.operationQueue <- *operation:
 		return &eventpkg.EventResponse{}, nil
 	default:
-		return nil, apierrors.NewServiceUnavailable("operation queue full")
+		return nil, sutils.ToStatusError(apierrors.NewServiceUnavailable("operation queue full"), codes.ResourceExhausted)
 	}
 }
 
@@ -91,5 +102,9 @@ func (s *Controller) ListWorkflowEventBindings(ctx context.Context, in *eventpkg
 	if in.ListOptions != nil {
 		listOptions = *in.ListOptions
 	}
-	return auth.GetWfClient(ctx).ArgoprojV1alpha1().WorkflowEventBindings(in.Namespace).List(ctx, listOptions)
+	eventBindings, err := auth.GetWfClient(ctx).ArgoprojV1alpha1().WorkflowEventBindings(in.Namespace).List(ctx, listOptions)
+	if err != nil {
+		return nil, sutils.ToStatusError(err, codes.Internal)
+	}
+	return eventBindings, nil
 }

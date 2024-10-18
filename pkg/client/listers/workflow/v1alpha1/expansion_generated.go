@@ -22,6 +22,14 @@ type WorkflowListerExpansion interface{}
 // WorkflowNamespaceLister.
 type WorkflowNamespaceListerExpansion interface{}
 
+// WorkflowArtifactGCTaskListerExpansion allows custom methods to be added to
+// WorkflowArtifactGCTaskLister.
+type WorkflowArtifactGCTaskListerExpansion interface{}
+
+// WorkflowArtifactGCTaskNamespaceListerExpansion allows custom methods to be added to
+// WorkflowArtifactGCTaskNamespaceLister.
+type WorkflowArtifactGCTaskNamespaceListerExpansion interface{}
+
 // WorkflowEventBindingListerExpansion allows custom methods to be added to
 // WorkflowEventBindingLister.
 type WorkflowEventBindingListerExpansion interface{}
@@ -29,6 +37,22 @@ type WorkflowEventBindingListerExpansion interface{}
 // WorkflowEventBindingNamespaceListerExpansion allows custom methods to be added to
 // WorkflowEventBindingNamespaceLister.
 type WorkflowEventBindingNamespaceListerExpansion interface{}
+
+// WorkflowTaskResultListerExpansion allows custom methods to be added to
+// WorkflowTaskResultLister.
+type WorkflowTaskResultListerExpansion interface{}
+
+// WorkflowTaskResultNamespaceListerExpansion allows custom methods to be added to
+// WorkflowTaskResultNamespaceLister.
+type WorkflowTaskResultNamespaceListerExpansion interface{}
+
+// WorkflowTaskSetListerExpansion allows custom methods to be added to
+// WorkflowTaskSetLister.
+type WorkflowTaskSetListerExpansion interface{}
+
+// WorkflowTaskSetNamespaceListerExpansion allows custom methods to be added to
+// WorkflowTaskSetNamespaceLister.
+type WorkflowTaskSetNamespaceListerExpansion interface{}
 
 // WorkflowTemplateListerExpansion allows custom methods to be added to
 // WorkflowTemplateLister.

@@ -1,22 +1,19 @@
 import {Observable, Observer} from 'rxjs';
-import * as _superagent from 'superagent';
+import * as superagent from 'superagent';
 import {SuperAgentRequest} from 'superagent';
+
 import {apiUrl, uiUrlWithParams} from '../base';
 
-const superagentPromise = require('superagent-promise');
-
-const auth = (req: SuperAgentRequest) => {
+function auth(req: SuperAgentRequest) {
     return req.on('error', handle);
-};
+}
 
-const handle = (err: any) => {
+function handle(err: any) {
     // check URL to prevent redirect loop
     if (err.status === 401 && !document.location.href.includes('login')) {
         document.location.href = uiUrlWithParams('login', ['redirect=' + document.location.href]);
     }
-};
-
-const superagent: _superagent.SuperAgentStatic = superagentPromise(_superagent, global.Promise);
+}
 
 export default {
     get(url: string) {
@@ -40,13 +37,13 @@ export default {
     },
 
     loadEventSource(url: string): Observable<string> {
-        return Observable.create((observer: Observer<any>) => {
+        return new Observable((observer: Observer<any>) => {
             const eventSource = new EventSource(url);
             // an null event is the best way I could find to get an event whenever we open the event source
             // otherwise, you'd have to wait for your first message (which maybe some time)
             eventSource.onopen = () => observer.next(null);
             eventSource.onmessage = x => observer.next(x.data);
-            eventSource.onerror = x => {
+            eventSource.onerror = () => {
                 switch (eventSource.readyState) {
                     case EventSource.CONNECTING:
                         observer.error(new Error('Failed to connect to ' + url));

@@ -6,14 +6,20 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	gosync "sync"
 	"syscall"
 	"time"
+
+	"github.com/upper/db/v4"
 
 	"github.com/argoproj/pkg/errors"
 	syncpkg "github.com/argoproj/pkg/sync"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
+	"golang.org/x/time/rate"
 	apiv1 "k8s.io/api/core/v1"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -24,14 +30,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
+	v1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	typedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	apiwatch "k8s.io/client-go/tools/watch"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"upper.io/db.v3/lib/sqlbuilder"
 
 	"github.com/argoproj/argo-workflows/v3"
 	"github.com/argoproj/argo-workflows/v3/config"
@@ -39,27 +45,46 @@ import (
 	"github.com/argoproj/argo-workflows/v3/persist/sqldb"
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	wfclientset "github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned"
+	"github.com/argoproj/argo-workflows/v3/pkg/client/informers/externalversions"
 	wfextvv1alpha1 "github.com/argoproj/argo-workflows/v3/pkg/client/informers/externalversions/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/pkg/plugins/spec"
 	authutil "github.com/argoproj/argo-workflows/v3/util/auth"
+	wfctx "github.com/argoproj/argo-workflows/v3/util/context"
+	"github.com/argoproj/argo-workflows/v3/util/deprecation"
 	"github.com/argoproj/argo-workflows/v3/util/diff"
 	"github.com/argoproj/argo-workflows/v3/util/env"
 	errorsutil "github.com/argoproj/argo-workflows/v3/util/errors"
+	"github.com/argoproj/argo-workflows/v3/util/telemetry"
 	"github.com/argoproj/argo-workflows/v3/workflow/artifactrepositories"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
 	controllercache "github.com/argoproj/argo-workflows/v3/workflow/controller/cache"
+	"github.com/argoproj/argo-workflows/v3/workflow/controller/entrypoint"
 	"github.com/argoproj/argo-workflows/v3/workflow/controller/estimation"
 	"github.com/argoproj/argo-workflows/v3/workflow/controller/indexes"
 	"github.com/argoproj/argo-workflows/v3/workflow/controller/informer"
 	"github.com/argoproj/argo-workflows/v3/workflow/controller/pod"
 	"github.com/argoproj/argo-workflows/v3/workflow/cron"
 	"github.com/argoproj/argo-workflows/v3/workflow/events"
+	"github.com/argoproj/argo-workflows/v3/workflow/gccontroller"
 	"github.com/argoproj/argo-workflows/v3/workflow/hydrator"
 	"github.com/argoproj/argo-workflows/v3/workflow/metrics"
 	"github.com/argoproj/argo-workflows/v3/workflow/signal"
 	"github.com/argoproj/argo-workflows/v3/workflow/sync"
-	"github.com/argoproj/argo-workflows/v3/workflow/ttlcontroller"
 	"github.com/argoproj/argo-workflows/v3/workflow/util"
+	plugin "github.com/argoproj/argo-workflows/v3/workflow/util/plugins"
 )
+
+const maxAllowedStackDepth = 100
+
+type recentlyCompletedWorkflow struct {
+	key  string
+	when time.Time
+}
+
+type recentCompletions struct {
+	completions []recentlyCompletedWorkflow
+	mutex       gosync.RWMutex
+}
 
 // WorkflowController is the controller for workflow resources
 type WorkflowController struct {
@@ -72,31 +97,42 @@ type WorkflowController struct {
 	Config config.Config
 	// get the artifact repository
 	artifactRepositories artifactrepositories.Interface
+	// get images
+	entrypoint entrypoint.Interface
 
 	// cliExecutorImage is the executor image as specified from the command line
 	cliExecutorImage string
 
 	// cliExecutorImagePullPolicy is the executor imagePullPolicy as specified from the command line
 	cliExecutorImagePullPolicy string
-	containerRuntimeExecutor   string
+
+	// cliExecutorLogFormat is the format in which argoexec will log
+	// possible options are json/text
+	cliExecutorLogFormat string
 
 	// restConfig is used by controller to send a SIGUSR1 to the wait sidecar using remotecommand.NewSPDYExecutor().
 	restConfig       *rest.Config
 	kubeclientset    kubernetes.Interface
+	rateLimiter      *rate.Limiter
 	dynamicInterface dynamic.Interface
 	wfclientset      wfclientset.Interface
+
+	// maxStackDepth is a configurable limit to the depth of the "stack", which is increased with every nested call to
+	// woc.executeTemplate and decreased when such calls return. This is used to prevent infinite recursion
+	maxStackDepth int
 
 	// datastructures to support the processing of workflows and workflow pods
 	wfInformer            cache.SharedIndexInformer
 	wftmplInformer        wfextvv1alpha1.WorkflowTemplateInformer
 	cwftmplInformer       wfextvv1alpha1.ClusterWorkflowTemplateInformer
 	podInformer           cache.SharedIndexInformer
+	configMapInformer     cache.SharedIndexInformer
 	wfQueue               workqueue.RateLimitingInterface
-	podQueue              workqueue.RateLimitingInterface
 	podCleanupQueue       workqueue.RateLimitingInterface // pods to be deleted or labelled depend on GC strategy
+	wfArchiveQueue        workqueue.RateLimitingInterface
 	throttler             sync.Throttler
 	workflowKeyLock       syncpkg.KeyLock // used to lock workflows for exclusive modification or access
-	session               sqlbuilder.Database
+	session               db.Session
 	offloadNodeStatusRepo sqldb.OffloadNodeStatusRepo
 	hydrator              hydrator.Interface
 	wfArchive             sqldb.WorkflowArchive
@@ -106,6 +142,25 @@ type WorkflowController struct {
 	eventRecorderManager  events.EventRecorderManager
 	archiveLabelSelector  labels.Selector
 	cacheFactory          controllercache.Factory
+	wfTaskSetInformer     wfextvv1alpha1.WorkflowTaskSetInformer
+	artGCTaskInformer     wfextvv1alpha1.WorkflowArtifactGCTaskInformer
+	taskResultInformer    cache.SharedIndexInformer
+
+	// progressPatchTickDuration defines how often the executor will patch pod annotations if an updated progress is found.
+	// Default is 1m and can be configured using the env var ARGO_PROGRESS_PATCH_TICK_DURATION.
+	progressPatchTickDuration time.Duration
+	// progressFileTickDuration defines how often the progress file is read.
+	// Default is 3s and can be configured using the env var ARGO_PROGRESS_FILE_TICK_DURATION
+	progressFileTickDuration time.Duration
+	executorPlugins          map[string]map[string]*spec.Plugin // namespace -> name -> plugin
+
+	recentCompletions recentCompletions
+}
+
+type PatchOperation struct {
+	Operation string      `json:"op"`
+	Path      string      `json:"path"`
+	Value     interface{} `json:"value,omitempty"`
 }
 
 const (
@@ -114,10 +169,30 @@ const (
 	podResyncPeriod                     = 30 * time.Minute
 	clusterWorkflowTemplateResyncPeriod = 20 * time.Minute
 	workflowExistenceCheckPeriod        = 1 * time.Minute
+	workflowTaskSetResyncPeriod         = 20 * time.Minute
 )
 
+var (
+	cacheGCPeriod = env.LookupEnvDurationOr("CACHE_GC_PERIOD", 0)
+
+	// semaphoreNotifyDelay is a slight delay when notifying/enqueueing workflows to the workqueue
+	// that are waiting on a semaphore. This value is passed to AddAfter(). We delay adding the next
+	// workflow because if we add immediately with AddRateLimited(), the next workflow will likely
+	// be reconciled at a point in time before we have finished the current workflow reconciliation
+	// as well as incrementing the semaphore counter availability, and so the next workflow will
+	// believe it cannot run. By delaying for 1s, we would have finished the semaphore counter
+	// updates, and the next workflow will see the updated availability.
+	semaphoreNotifyDelay = env.LookupEnvDurationOr("SEMAPHORE_NOTIFY_DELAY", time.Second)
+)
+
+func init() {
+	if cacheGCPeriod != 0 {
+		log.WithField("cacheGCPeriod", cacheGCPeriod).Info("GC for memoization caches will be performed every")
+	}
+}
+
 // NewWorkflowController instantiates a new WorkflowController
-func NewWorkflowController(ctx context.Context, restConfig *rest.Config, kubeclientset kubernetes.Interface, wfclientset wfclientset.Interface, namespace, managedNamespace, executorImage, executorImagePullPolicy, containerRuntimeExecutor, configMap string) (*WorkflowController, error) {
+func NewWorkflowController(ctx context.Context, restConfig *rest.Config, kubeclientset kubernetes.Interface, wfclientset wfclientset.Interface, namespace, managedNamespace, executorImage, executorImagePullPolicy, executorLogFormat, configMap string, executorPlugins bool) (*WorkflowController, error) {
 	dynamicInterface, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -132,45 +207,70 @@ func NewWorkflowController(ctx context.Context, restConfig *rest.Config, kubecli
 		managedNamespace:           managedNamespace,
 		cliExecutorImage:           executorImage,
 		cliExecutorImagePullPolicy: executorImagePullPolicy,
-		containerRuntimeExecutor:   containerRuntimeExecutor,
-		configController:           config.NewController(namespace, configMap, kubeclientset, config.EmptyConfigFunc),
+		cliExecutorLogFormat:       executorLogFormat,
+		configController:           config.NewController(namespace, configMap, kubeclientset),
 		workflowKeyLock:            syncpkg.NewKeyLock(),
 		cacheFactory:               controllercache.NewCacheFactory(kubeclientset, namespace),
 		eventRecorderManager:       events.NewEventRecorderManager(kubeclientset),
+		progressPatchTickDuration:  env.LookupEnvDurationOr(common.EnvVarProgressPatchTickDuration, 1*time.Minute),
+		progressFileTickDuration:   env.LookupEnvDurationOr(common.EnvVarProgressFileTickDuration, 3*time.Second),
+	}
+
+	if executorPlugins {
+		wfc.executorPlugins = map[string]map[string]*spec.Plugin{}
 	}
 
 	wfc.UpdateConfig(ctx)
+	wfc.maxStackDepth = wfc.getMaxStackDepth()
+	wfc.metrics, err = metrics.New(ctx,
+		`workflows-controller`,
+		`argo_workflows`,
+		wfc.getMetricsServerConfig(),
+		metrics.Callbacks{
+			PodPhase:          wfc.getPodPhaseMetrics,
+			WorkflowPhase:     wfc.getWorkflowPhaseMetrics,
+			WorkflowCondition: wfc.getWorkflowConditionMetrics,
+			IsLeader:          wfc.IsLeader,
+		})
+	deprecation.Initialize(wfc.metrics.Metrics.DeprecatedFeature)
 
-	wfc.metrics = metrics.New(wfc.getMetricsServerConfig())
+	if err != nil {
+		return nil, err
+	}
+	wfc.entrypoint = entrypoint.New(kubeclientset, wfc.Config.Images)
 
-	workqueue.SetProvider(wfc.metrics) // must execute SetProvider before we created the queues
-	wfc.wfQueue = wfc.metrics.RateLimiterWithBusyWorkers(&fixedItemIntervalRateLimiter{}, "workflow_queue")
+	workqueue.SetProvider(wfc.metrics) // must execute SetProvider before we create the queues
+	wfc.wfQueue = wfc.metrics.RateLimiterWithBusyWorkers(ctx, &fixedItemIntervalRateLimiter{}, "workflow_queue")
 	wfc.throttler = wfc.newThrottler()
-	wfc.podQueue = wfc.metrics.RateLimiterWithBusyWorkers(workqueue.DefaultControllerRateLimiter(), "pod_queue")
-	wfc.podCleanupQueue = wfc.metrics.RateLimiterWithBusyWorkers(workqueue.DefaultControllerRateLimiter(), "pod_cleanup_queue")
+	wfc.podCleanupQueue = wfc.metrics.RateLimiterWithBusyWorkers(ctx, workqueue.DefaultControllerRateLimiter(), "pod_cleanup_queue")
+	wfc.wfArchiveQueue = wfc.metrics.RateLimiterWithBusyWorkers(ctx, workqueue.DefaultControllerRateLimiter(), "workflow_archive_queue")
 
 	return &wfc, nil
 }
 
 func (wfc *WorkflowController) newThrottler() sync.Throttler {
-	return sync.NewThrottler(wfc.Config.Parallelism, func(key string) { wfc.wfQueue.AddRateLimited(key) })
+	f := func(key string) { wfc.wfQueue.AddRateLimited(key) }
+	return sync.ChainThrottler{
+		sync.NewThrottler(wfc.Config.Parallelism, sync.SingleBucket, f),
+		sync.NewThrottler(wfc.Config.NamespaceParallelism, sync.NamespaceBucket, f),
+	}
 }
 
-// RunTTLController runs the workflow TTL controller
-func (wfc *WorkflowController) runTTLController(ctx context.Context, workflowTTLWorkers int) {
+// runGCcontroller runs the workflow garbage collector controller
+func (wfc *WorkflowController) runGCcontroller(ctx context.Context, workflowTTLWorkers int) {
 	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
 
-	ttlCtrl := ttlcontroller.NewController(wfc.wfclientset, wfc.wfInformer, wfc.metrics)
-	err := ttlCtrl.Run(ctx.Done(), workflowTTLWorkers)
+	gcCtrl := gccontroller.NewController(ctx, wfc.wfclientset, wfc.wfInformer, wfc.metrics, wfc.Config.RetentionPolicy)
+	err := gcCtrl.Run(ctx.Done(), workflowTTLWorkers)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (wfc *WorkflowController) runCronController(ctx context.Context) {
+func (wfc *WorkflowController) runCronController(ctx context.Context, cronWorkflowWorkers int) {
 	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
 
-	cronController := cron.NewCronController(wfc.wfclientset, wfc.dynamicInterface, wfc.namespace, wfc.GetManagedNamespace(), wfc.Config.InstanceID, wfc.metrics, wfc.eventRecorderManager)
+	cronController := cron.NewCronController(ctx, wfc.wfclientset, wfc.dynamicInterface, wfc.namespace, wfc.GetManagedNamespace(), wfc.Config.InstanceID, wfc.metrics, wfc.eventRecorderManager, cronWorkflowWorkers, wfc.wftmplInformer, wfc.cwftmplInformer)
 	cronController.Run(ctx)
 }
 
@@ -181,95 +281,83 @@ var indexers = cache.Indexers{
 	indexes.SemaphoreConfigIndexName:     indexes.WorkflowSemaphoreKeysIndexFunc(),
 	indexes.WorkflowPhaseIndex:           indexes.MetaWorkflowPhaseIndexFunc(),
 	indexes.ConditionsIndex:              indexes.ConditionsIndexFunc,
+	indexes.UIDIndex:                     indexes.MetaUIDFunc,
+	cache.NamespaceIndex:                 cache.MetaNamespaceIndexFunc,
 }
 
-// Run starts an Workflow resource controller
-func (wfc *WorkflowController) Run(ctx context.Context, wfWorkers, workflowTTLWorkers, podWorkers, podCleanupWorkers int) {
+// Run starts a Workflow resource controller
+func (wfc *WorkflowController) Run(ctx context.Context, wfWorkers, workflowTTLWorkers, podCleanupWorkers, cronWorkflowWorkers, wfArchiveWorkers int) {
 	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
-	defer wfc.wfQueue.ShutDown()
-	defer wfc.podQueue.ShutDown()
-	defer wfc.podCleanupQueue.ShutDown()
 
-	log.WithField("version", argo.GetVersion().Version).Info("Starting Workflow Controller")
-	log.Infof("Workers: workflow: %d, pod: %d, pod cleanup: %d", wfWorkers, podWorkers, podCleanupWorkers)
-
-	wfc.wfInformer = util.NewWorkflowInformer(wfc.dynamicInterface, wfc.GetManagedNamespace(), workflowResyncPeriod, wfc.tweakListOptions, indexers)
-	wfc.wftmplInformer = informer.NewTolerantWorkflowTemplateInformer(wfc.dynamicInterface, workflowTemplateResyncPeriod, wfc.managedNamespace)
-
-	wfc.addWorkflowInformerHandlers(ctx)
-	wfc.podInformer = wfc.newPodInformer(ctx)
-	wfc.updateEstimatorFactory()
-
-	go wfc.runConfigMapWatcher(ctx.Done())
-	go wfc.configController.Run(ctx.Done(), wfc.updateConfig)
-	go wfc.wfInformer.Run(ctx.Done())
-	go wfc.wftmplInformer.Informer().Run(ctx.Done())
-	go wfc.podInformer.Run(ctx.Done())
-
-	// Wait for all involved caches to be synced, before processing items from the queue is started
-	if !cache.WaitForCacheSync(ctx.Done(), wfc.wfInformer.HasSynced, wfc.wftmplInformer.Informer().HasSynced, wfc.podInformer.HasSynced) {
-		log.Fatal("Timed out waiting for caches to sync")
+	// init DB after leader election (if enabled)
+	if err := wfc.initDB(); err != nil {
+		log.Fatalf("Failed to init db: %v", err)
 	}
 
-	wfc.createClusterWorkflowTemplateInformer(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// Create Synchronization Manager
-	err := wfc.createSynchronizationManager(ctx)
+	defer wfc.wfQueue.ShutDown()
+	defer wfc.podCleanupQueue.ShutDown()
+
+	log.WithField("version", argo.GetVersion().Version).
+		WithField("defaultRequeueTime", GetRequeueTime()).
+		Info("Starting Workflow Controller")
+	log.WithField("workflowWorkers", wfWorkers).
+		WithField("workflowTtlWorkers", workflowTTLWorkers).
+		WithField("podCleanup", podCleanupWorkers).
+		WithField("cronWorkflowWorkers", cronWorkflowWorkers).
+		WithField("workflowArchive", wfArchiveWorkers).
+		Info("Current Worker Numbers")
+
+	wfc.wfInformer = util.NewWorkflowInformer(wfc.dynamicInterface, wfc.GetManagedNamespace(), workflowResyncPeriod, wfc.tweakListRequestListOptions, wfc.tweakWatchRequestListOptions, indexers)
+	wfc.wftmplInformer = informer.NewTolerantWorkflowTemplateInformer(wfc.dynamicInterface, workflowTemplateResyncPeriod, wfc.managedNamespace)
+
+	wfc.wfTaskSetInformer = wfc.newWorkflowTaskSetInformer()
+	wfc.artGCTaskInformer = wfc.newArtGCTaskInformer()
+	wfc.taskResultInformer = wfc.newWorkflowTaskResultInformer()
+	err := wfc.addWorkflowInformerHandlers(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
+	wfc.podInformer = wfc.newPodInformer(ctx)
+	wfc.updateEstimatorFactory()
 
-	// Start the metrics server
-	go wfc.metrics.RunServer(ctx)
+	wfc.configMapInformer = wfc.newConfigMapInformer()
 
-	leaderElectionOff := os.Getenv("LEADER_ELECTION_DISABLE")
-	if leaderElectionOff == "true" {
-		log.Info("Leader election is turned off. Running in single-instance mode")
-		logCtx := log.WithField("id", "single-instance")
-		go wfc.startLeading(ctx, logCtx, podCleanupWorkers, workflowTTLWorkers, wfWorkers, podWorkers)
-	} else {
-		nodeID, ok := os.LookupEnv("LEADER_ELECTION_IDENTITY")
-		if !ok {
-			log.Fatal("LEADER_ELECTION_IDENTITY must be set so that the workflow controllers can elect a leader")
-		}
-		logCtx := log.WithField("id", nodeID)
-
-		var cancel context.CancelFunc
-		leaderName := "workflow-controller"
-		if wfc.Config.InstanceID != "" {
-			leaderName = fmt.Sprintf("%s-%s", leaderName, wfc.Config.InstanceID)
-		}
-
-		go leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-			Lock: &resourcelock.LeaseLock{
-				LeaseMeta: metav1.ObjectMeta{Name: leaderName, Namespace: wfc.namespace}, Client: wfc.kubeclientset.CoordinationV1(),
-				LockConfig: resourcelock.ResourceLockConfig{Identity: nodeID, EventRecorder: wfc.eventRecorderManager.Get(wfc.namespace)},
-			},
-			ReleaseOnCancel: true,
-			LeaseDuration:   env.LookupEnvDurationOr("LEADER_ELECTION_LEASE_DURATION", 15*time.Second),
-			RenewDeadline:   env.LookupEnvDurationOr("LEADER_ELECTION_RENEW_DEADLINE", 10*time.Second),
-			RetryPeriod:     env.LookupEnvDurationOr("LEADER_ELECTION_RETRY_PERIOD", 5*time.Second),
-			Callbacks: leaderelection.LeaderCallbacks{
-				OnStartedLeading: func(ctx context.Context) {
-					wfc.startLeading(ctx, logCtx, podCleanupWorkers, workflowTTLWorkers, wfWorkers, podWorkers)
-				},
-				OnStoppedLeading: func() {
-					logCtx.Info("stopped leading")
-					cancel()
-				},
-				OnNewLeader: func(identity string) {
-					logCtx.WithField("leader", identity).Info("new leader")
-				},
-			},
-		})
+	// Create Synchronization Manager
+	wfc.createSynchronizationManager(ctx)
+	// init managers: throttler and SynchronizationManager
+	if err := wfc.initManagers(ctx); err != nil {
+		log.Fatal(err)
 	}
-	<-ctx.Done()
-}
 
-func (wfc *WorkflowController) startLeading(ctx context.Context, logCtx *log.Entry, podCleanupWorkers int, workflowTTLWorkers int, wfWorkers int, podWorkers int) {
-	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
+	if os.Getenv("WATCH_CONTROLLER_SEMAPHORE_CONFIGMAPS") != "false" {
+		go wfc.runConfigMapWatcher(ctx.Done())
+	}
 
-	logCtx.Info("started leading")
+	go wfc.wfInformer.Run(ctx.Done())
+	go wfc.wftmplInformer.Informer().Run(ctx.Done())
+	go wfc.podInformer.Run(ctx.Done())
+	go wfc.configMapInformer.Run(ctx.Done())
+	go wfc.wfTaskSetInformer.Informer().Run(ctx.Done())
+	go wfc.artGCTaskInformer.Informer().Run(ctx.Done())
+	go wfc.taskResultInformer.Run(ctx.Done())
+	wfc.createClusterWorkflowTemplateInformer(ctx)
+
+	// Wait for all involved caches to be synced, before processing items from the queue is started
+	if !cache.WaitForCacheSync(
+		ctx.Done(),
+		wfc.wfInformer.HasSynced,
+		wfc.wftmplInformer.Informer().HasSynced,
+		wfc.podInformer.HasSynced,
+		wfc.configMapInformer.HasSynced,
+		wfc.wfTaskSetInformer.Informer().HasSynced,
+		wfc.artGCTaskInformer.Informer().HasSynced,
+		wfc.taskResultInformer.HasSynced,
+	) {
+		log.Fatal("Timed out waiting for caches to sync")
+	}
 
 	for i := 0; i < podCleanupWorkers; i++ {
 		go wait.UntilWithContext(ctx, wfc.runPodCleanup, time.Second)
@@ -277,35 +365,29 @@ func (wfc *WorkflowController) startLeading(ctx context.Context, logCtx *log.Ent
 	go wfc.workflowGarbageCollector(ctx.Done())
 	go wfc.archivedWorkflowGarbageCollector(ctx.Done())
 
-	go wfc.runTTLController(ctx, workflowTTLWorkers)
-	go wfc.runCronController(ctx)
-	go wait.Until(wfc.syncWorkflowPhaseMetrics, 15*time.Second, ctx.Done())
-	go wait.Until(wfc.syncPodPhaseMetrics, 15*time.Second, ctx.Done())
+	go wfc.runGCcontroller(ctx, workflowTTLWorkers)
+	go wfc.runCronController(ctx, cronWorkflowWorkers)
 
 	go wait.Until(wfc.syncManager.CheckWorkflowExistence, workflowExistenceCheckPeriod, ctx.Done())
 
 	for i := 0; i < wfWorkers; i++ {
 		go wait.Until(wfc.runWorker, time.Second, ctx.Done())
 	}
-	for i := 0; i < podWorkers; i++ {
-		go wait.Until(wfc.podWorker, time.Second, ctx.Done())
+	for i := 0; i < wfArchiveWorkers; i++ {
+		go wait.Until(wfc.runArchiveWorker, time.Second, ctx.Done())
 	}
+	if cacheGCPeriod != 0 {
+		go wait.JitterUntilWithContext(ctx, wfc.syncAllCacheForGC, cacheGCPeriod, 0.0, true)
+	}
+	<-ctx.Done()
 }
 
-func (wfc *WorkflowController) waitForCacheSync(ctx context.Context) {
-	// Wait for all involved caches to be synced, before processing items from the queue is started
-	if !cache.WaitForCacheSync(ctx.Done(), wfc.wfInformer.HasSynced, wfc.wftmplInformer.Informer().HasSynced, wfc.podInformer.HasSynced) {
-		panic("Timed out waiting for caches to sync")
-	}
-	if wfc.cwftmplInformer != nil {
-		if !cache.WaitForCacheSync(ctx.Done(), wfc.cwftmplInformer.Informer().HasSynced) {
-			panic("Timed out waiting for caches to sync")
-		}
-	}
+func (wfc *WorkflowController) RunPrometheusServer(ctx context.Context, isDummy bool) {
+	wfc.metrics.RunPrometheusServer(ctx, isDummy)
 }
 
-// Create and initialize the Synchronization Manager
-func (wfc *WorkflowController) createSynchronizationManager(ctx context.Context) error {
+// Create and the Synchronization Manager
+func (wfc *WorkflowController) createSynchronizationManager(ctx context.Context) {
 	getSyncLimit := func(lockKey string) (int, error) {
 		lockName, err := sync.DecodeLockName(lockKey)
 		if err != nil {
@@ -324,7 +406,7 @@ func (wfc *WorkflowController) createSynchronizationManager(ctx context.Context)
 	}
 
 	nextWorkflow := func(key string) {
-		wfc.wfQueue.AddRateLimited(key)
+		wfc.wfQueue.AddAfter(key, semaphoreNotifyDelay)
 	}
 
 	isWFDeleted := func(key string) bool {
@@ -337,20 +419,27 @@ func (wfc *WorkflowController) createSynchronizationManager(ctx context.Context)
 	}
 
 	wfc.syncManager = sync.NewLockManager(getSyncLimit, nextWorkflow, isWFDeleted)
+}
 
-	labelSelector := labels.NewSelector()
-	req, _ := labels.NewRequirement(common.LabelKeyPhase, selection.Equals, []string{string(wfv1.NodeRunning)})
+// list all running workflows to initialize throttler and syncManager
+func (wfc *WorkflowController) initManagers(ctx context.Context) error {
+	labelSelector := labels.NewSelector().Add(util.InstanceIDRequirement(wfc.Config.InstanceID))
+	req, _ := labels.NewRequirement(common.LabelKeyPhase, selection.Equals, []string{string(wfv1.WorkflowRunning)})
 	if req != nil {
 		labelSelector = labelSelector.Add(*req)
 	}
-
 	listOpts := metav1.ListOptions{LabelSelector: labelSelector.String()}
-	wfList, err := wfc.wfclientset.ArgoprojV1alpha1().Workflows(wfc.namespace).List(ctx, listOpts)
+	wfList, err := wfc.wfclientset.ArgoprojV1alpha1().Workflows(wfc.GetManagedNamespace()).List(ctx, listOpts)
 	if err != nil {
 		return err
 	}
 
-	wfc.syncManager.Initialize(wfList.Items)
+	wfc.syncManager.Initialize(ctx, wfList.Items)
+
+	if err := wfc.throttler.Init(wfList.Items); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -377,8 +466,11 @@ func (wfc *WorkflowController) runConfigMapWatcher(stopCh <-chan struct{}) {
 				continue
 			}
 			log.Debugf("received config map %s/%s update", cm.Namespace, cm.Name)
+			if cm.GetName() == wfc.configController.GetName() && wfc.namespace == cm.GetNamespace() {
+				log.Infof("Received Workflow Controller config map %s/%s update", cm.Namespace, cm.Name)
+				wfc.UpdateConfig(ctx)
+			}
 			wfc.notifySemaphoreConfigUpdate(cm)
-
 		case <-stopCh:
 			return
 		}
@@ -414,17 +506,26 @@ func (wfc *WorkflowController) createClusterWorkflowTemplateInformer(ctx context
 	if cwftGetAllowed && cwftListAllowed && cwftWatchAllowed {
 		wfc.cwftmplInformer = informer.NewTolerantClusterWorkflowTemplateInformer(wfc.dynamicInterface, clusterWorkflowTemplateResyncPeriod)
 		go wfc.cwftmplInformer.Informer().Run(ctx.Done())
+
+		// since the above call is asynchronous, make sure we populate our cache before we try to use it later
+		if !cache.WaitForCacheSync(
+			ctx.Done(),
+			wfc.cwftmplInformer.Informer().HasSynced,
+		) {
+			log.Fatal("Timed out waiting for ClusterWorkflowTemplate cache to sync")
+		}
 	} else {
 		log.Warnf("Controller doesn't have RBAC access for ClusterWorkflowTemplates")
 	}
 }
 
 func (wfc *WorkflowController) UpdateConfig(ctx context.Context) {
-	config, err := wfc.configController.Get(ctx)
+	c, err := wfc.configController.Get(ctx)
 	if err != nil {
 		log.Fatalf("Failed to register watch for controller config map: %v", err)
 	}
-	err = wfc.updateConfig(config)
+	wfc.Config = *c
+	err = wfc.updateConfig()
 	if err != nil {
 		log.Fatalf("Failed to update config: %v", err)
 	}
@@ -449,36 +550,40 @@ func (wfc *WorkflowController) processNextPodCleanupItem(ctx context.Context) bo
 	if quit {
 		return false
 	}
-	defer wfc.podCleanupQueue.Done(key)
+
+	defer func() {
+		wfc.podCleanupQueue.Forget(key)
+		wfc.podCleanupQueue.Done(key)
+	}()
 
 	namespace, podName, action := parsePodCleanupKey(key.(podCleanupKey))
 	logCtx := log.WithFields(log.Fields{"key": key, "action": action})
 	logCtx.Info("cleaning up pod")
 	err := func() error {
-		pods := wfc.kubeclientset.CoreV1().Pods(namespace)
 		switch action {
 		case terminateContainers:
-			if terminationGracePeriod, err := wfc.signalContainers(namespace, podName, syscall.SIGTERM); err != nil {
+			pod, err := wfc.getPodFromCache(namespace, podName)
+			if err == nil && pod != nil && pod.Status.Phase == apiv1.PodPending {
+				wfc.queuePodForCleanup(namespace, podName, deletePod)
+			} else if terminationGracePeriod, err := wfc.signalContainers(ctx, namespace, podName, syscall.SIGTERM); err != nil {
 				return err
 			} else if terminationGracePeriod > 0 {
 				wfc.queuePodForCleanupAfter(namespace, podName, killContainers, terminationGracePeriod)
 			}
 		case killContainers:
-			if _, err := wfc.signalContainers(namespace, podName, syscall.SIGKILL); err != nil {
+			if _, err := wfc.signalContainers(ctx, namespace, podName, syscall.SIGKILL); err != nil {
 				return err
 			}
 		case labelPodCompleted:
-			_, err := pods.Patch(
-				ctx,
-				podName,
-				types.MergePatchType,
-				[]byte(`{"metadata": {"labels": {"workflows.argoproj.io/completed": "true"}}}`),
-				metav1.PatchOptions{},
-			)
-			if err != nil {
+			pods := wfc.kubeclientset.CoreV1().Pods(namespace)
+			if err := wfc.enablePodForDeletion(ctx, pods, namespace, podName, true); err != nil {
 				return err
 			}
 		case deletePod:
+			pods := wfc.kubeclientset.CoreV1().Pods(namespace)
+			if err := wfc.enablePodForDeletion(ctx, pods, namespace, podName, false); err != nil {
+				return err
+			}
 			propagation := metav1.DeletePropagationBackground
 			err := pods.Delete(ctx, podName, metav1.DeleteOptions{
 				PropagationPolicy:  &propagation,
@@ -499,25 +604,79 @@ func (wfc *WorkflowController) processNextPodCleanupItem(ctx context.Context) bo
 	return true
 }
 
-func (wfc *WorkflowController) signalContainers(namespace string, podName string, sig syscall.Signal) (time.Duration, error) {
+func (wfc *WorkflowController) getPodFromAPI(ctx context.Context, namespace string, podName string) (*apiv1.Pod, error) {
+	pod, err := wfc.kubeclientset.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
+}
+
+func (wfc *WorkflowController) getPodFromCache(namespace string, podName string) (*apiv1.Pod, error) {
 	obj, exists, err := wfc.podInformer.GetStore().GetByKey(namespace + "/" + podName)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	if !exists {
-		return 0, nil
+		return nil, nil
 	}
 	pod, ok := obj.(*apiv1.Pod)
 	if !ok {
-		return 0, fmt.Errorf("object is not a pod")
+		return nil, fmt.Errorf("object is not a pod")
 	}
+	return pod, nil
+}
+
+func (wfc *WorkflowController) enablePodForDeletion(ctx context.Context, pods typedv1.PodInterface, namespace string, podName string, isCompleted bool) error {
+	// Get current Pod from K8S and update it to remove finalizer, and if the Pod was completed, set the Label
+	// In the case that the Pod changed in between Get and Update, we'll get a conflict error and can try again
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		currentPod, err := wfc.getPodFromAPI(ctx, namespace, podName)
+		if err != nil {
+			return err
+		}
+		updatedPod := currentPod.DeepCopy()
+
+		if isCompleted {
+			if updatedPod.Labels == nil {
+				updatedPod.Labels = make(map[string]string)
+			}
+			updatedPod.Labels[common.LabelKeyCompleted] = "true"
+		}
+
+		updatedPod.Finalizers = removeFinalizer(updatedPod.Finalizers, common.FinalizerPodStatus)
+
+		_, err = pods.Update(ctx, updatedPod, metav1.UpdateOptions{})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeFinalizer(finalizers []string, targetFinalizer string) []string {
+	var updatedFinalizers []string
+	for _, finalizer := range finalizers {
+		if finalizer != targetFinalizer {
+			updatedFinalizers = append(updatedFinalizers, finalizer)
+		}
+	}
+	return updatedFinalizers
+}
+
+func (wfc *WorkflowController) signalContainers(ctx context.Context, namespace string, podName string, sig syscall.Signal) (time.Duration, error) {
+	pod, err := wfc.getPodFromCache(namespace, podName)
+	if pod == nil || err != nil {
+		return 0, err
+	}
+
 	for _, c := range pod.Status.ContainerStatuses {
-		if c.Name == common.WaitContainerName || c.State.Terminated != nil {
+		if c.State.Running == nil {
 			continue
 		}
-		if err := signal.SignalContainer(wfc.restConfig, pod.Namespace, pod.Name, c.Name, sig); err != nil {
-			return 0, err
-		}
+		// problems are already logged at info level, so we just ignore errors here
+		_ = signal.SignalContainer(ctx, wfc.restConfig, pod, c.Name, sig)
 	}
 	if pod.Spec.TerminationGracePeriodSeconds == nil {
 		return 30 * time.Second, nil
@@ -529,7 +688,7 @@ func (wfc *WorkflowController) workflowGarbageCollector(stopCh <-chan struct{}) 
 	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
 
 	periodicity := env.LookupEnvDurationOr("WORKFLOW_GC_PERIOD", 5*time.Minute)
-	log.Infof("Performing periodic GC every %v", periodicity)
+	log.WithField("periodicity", periodicity).Info("Performing periodic GC")
 	ticker := time.NewTicker(periodicity)
 	for {
 		select {
@@ -544,35 +703,70 @@ func (wfc *WorkflowController) workflowGarbageCollector(stopCh <-chan struct{}) 
 					log.WithField("err", err).Error("Failed to list old offloaded nodes")
 					continue
 				}
-				if len(oldRecords) == 0 {
-					log.Info("Zero old offloads, nothing to do")
-					continue
-				}
-				// get every lives workflow (1000s) into a map
-				liveOffloadNodeStatusVersions := make(map[types.UID]string)
-				workflows, err := util.NewWorkflowLister(wfc.wfInformer).List()
-				if err != nil {
-					log.WithField("err", err).Error("Failed to list incomplete workflows")
-					continue
-				}
-				for _, wf := range workflows {
-					// this could be the empty string - as it is no longer offloaded
-					liveOffloadNodeStatusVersions[wf.UID] = wf.Status.OffloadNodeStatusVersion
-				}
-				log.WithFields(log.Fields{"len_wfs": len(liveOffloadNodeStatusVersions), "len_old_offloads": len(oldRecords)}).Info("Deleting old offloads that are not live")
-				for _, record := range oldRecords {
-					// this could be empty string
-					nodeStatusVersion, ok := liveOffloadNodeStatusVersions[types.UID(record.UID)]
-					if !ok || nodeStatusVersion != record.Version {
-						err := wfc.offloadNodeStatusRepo.Delete(record.UID, record.Version)
-						if err != nil {
-							log.WithField("err", err).Error("Failed to delete offloaded nodes")
-						}
+				log.WithField("len_wfs", len(oldRecords)).Info("Deleting old offloads that are not live")
+				for uid, versions := range oldRecords {
+					if err := wfc.deleteOffloadedNodesForWorkflow(uid, versions); err != nil {
+						log.WithError(err).WithField("uid", uid).Error("Failed to delete old offloaded nodes")
 					}
 				}
+				log.Info("Workflow GC finished")
 			}
 		}
 	}
+}
+
+func (wfc *WorkflowController) deleteOffloadedNodesForWorkflow(uid string, versions []string) error {
+	workflows, err := wfc.wfInformer.GetIndexer().ByIndex(indexes.UIDIndex, uid)
+	if err != nil {
+		return err
+	}
+	var wf *wfv1.Workflow
+	switch l := len(workflows); l {
+	case 0:
+		log.WithField("uid", uid).Info("Workflow missing, probably deleted")
+	case 1:
+		un, ok := workflows[0].(*unstructured.Unstructured)
+		if !ok {
+			return fmt.Errorf("object %+v is not an unstructured", workflows[0])
+		}
+		key := un.GetNamespace() + "/" + un.GetName()
+		wfc.workflowKeyLock.Lock(key)
+		defer wfc.workflowKeyLock.Unlock(key)
+
+		obj, ok := wfc.getWorkflowByKey(key)
+		if !ok {
+			return fmt.Errorf("failed to get workflow by key after locking")
+		}
+		un, ok = obj.(*unstructured.Unstructured)
+		if !ok {
+			return fmt.Errorf("object %+v is not an unstructured", obj)
+		}
+		wf, err = util.FromUnstructured(un)
+		if err != nil {
+			return err
+		}
+
+		// workflow might still be hydrated
+		if wfc.hydrator.IsHydrated(wf) {
+			log.WithField("uid", wf.UID).Info("Hydrated workflow encountered")
+			err = wfc.hydrator.Dehydrate(wf)
+			if err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("expected no more than 1 workflow, got %d", l)
+	}
+	for _, version := range versions {
+		// skip delete if offload is live
+		if wf != nil && wf.Status.OffloadNodeStatusVersion == version {
+			continue
+		}
+		if err := wfc.offloadNodeStatusRepo.Delete(uid, version); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (wfc *WorkflowController) archivedWorkflowGarbageCollector(stopCh <-chan struct{}) {
@@ -617,6 +811,14 @@ func (wfc *WorkflowController) runWorker() {
 	}
 }
 
+func (wfc *WorkflowController) runArchiveWorker() {
+	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
+
+	ctx := context.Background()
+	for wfc.processNextArchiveItem(ctx) {
+	}
+}
+
 // processNextItem is the worker logic for handling workflow updates
 func (wfc *WorkflowController) processNextItem(ctx context.Context) bool {
 	key, quit := wfc.wfQueue.Get()
@@ -625,19 +827,13 @@ func (wfc *WorkflowController) processNextItem(ctx context.Context) bool {
 	}
 	defer wfc.wfQueue.Done(key)
 
-	obj, exists, err := wfc.wfInformer.GetIndexer().GetByKey(key.(string))
-	if err != nil {
-		log.WithFields(log.Fields{"key": key, "error": err}).Error("Failed to get workflow from informer")
-		return true
-	}
-	if !exists {
-		// This happens after a workflow was labeled with completed=true
-		// or was deleted, but the work queue still had an entry for it.
-		return true
-	}
-
 	wfc.workflowKeyLock.Lock(key.(string))
 	defer wfc.workflowKeyLock.Unlock(key.(string))
+
+	obj, ok := wfc.getWorkflowByKey(key.(string))
+	if !ok {
+		return true
+	}
 
 	// The workflow informer receives unstructured objects to deal with the possibility of invalid
 	// workflow manifests that are unable to unmarshal to workflow objects
@@ -647,8 +843,8 @@ func (wfc *WorkflowController) processNextItem(ctx context.Context) bool {
 		return true
 	}
 
-	if !wfc.throttler.Admit(key.(string)) {
-		log.WithFields(log.Fields{"key": key}).Info("Workflow processing has been postponed due to max parallelism limit")
+	if !reconciliationNeeded(un) {
+		log.WithFields(log.Fields{"key": key}).Debug("Won't process Workflow since it's completed")
 		return true
 	}
 
@@ -661,20 +857,29 @@ func (wfc *WorkflowController) processNextItem(ctx context.Context) bool {
 		return true
 	}
 
-	if wf.Labels[common.LabelKeyCompleted] == "true" {
-		// can get here if we already added the completed=true label,
-		// but we are still draining the controller's workflow workqueue
+	if wf.Status.Phase != "" && wfc.checkRecentlyCompleted(wf.ObjectMeta.Name) {
+		log.WithFields(log.Fields{"name": wf.ObjectMeta.Name}).Warn("Cache: Rejecting recently deleted")
 		return true
 	}
+
 	// this will ensure we process every incomplete workflow once every 20m
 	wfc.wfQueue.AddAfter(key, workflowResyncPeriod)
 
 	woc := newWorkflowOperationCtx(wf, wfc)
 
+	if !(woc.GetShutdownStrategy().Enabled() && woc.GetShutdownStrategy() == wfv1.ShutdownStrategyTerminate) && !wfc.throttler.Admit(key.(string)) {
+		log.WithField("key", key).Info("Workflow processing has been postponed due to max parallelism limit")
+		if woc.wf.Status.Phase == wfv1.WorkflowUnknown {
+			woc.markWorkflowPhase(ctx, wfv1.WorkflowPending, "Workflow processing has been postponed because too many workflows are already running")
+			woc.persistUpdates(ctx)
+		}
+		return true
+	}
+
 	// make sure this is removed from the throttler is complete
 	defer func() {
 		// must be done with woc
-		if woc.wf.Labels[common.LabelKeyCompleted] == "true" {
+		if !reconciliationNeeded(woc.wf) {
 			wfc.throttler.Remove(key.(string))
 		}
 	}()
@@ -686,29 +891,10 @@ func (wfc *WorkflowController) processNextItem(ctx context.Context) bool {
 		woc.persistUpdates(ctx)
 		return true
 	}
-
+	ctx = wfctx.InjectObjectMeta(ctx, &woc.wf.ObjectMeta)
 	startTime := time.Now()
 	woc.operate(ctx)
-	wfc.metrics.OperationCompleted(time.Since(startTime).Seconds())
-	if woc.wf.Status.Fulfilled() {
-		// Send all completed pods to gcPods channel to delete it later depend on the PodGCStrategy.
-		var doPodGC bool
-		if woc.execWf.Spec.PodGC != nil {
-			switch woc.execWf.Spec.PodGC.Strategy {
-			case wfv1.PodGCOnWorkflowCompletion:
-				doPodGC = true
-			case wfv1.PodGCOnWorkflowSuccess:
-				if woc.wf.Status.Successful() {
-					doPodGC = true
-				}
-			}
-		}
-		if doPodGC {
-			for podName := range woc.completedPods {
-				woc.controller.queuePodForCleanup(woc.wf.Namespace, podName, deletePod)
-			}
-		}
-	}
+	wfc.metrics.OperationCompleted(ctx, time.Since(startTime).Seconds())
 
 	// TODO: operate should return error if it was unable to operate properly
 	// so we can requeue the work for a later time
@@ -717,38 +903,42 @@ func (wfc *WorkflowController) processNextItem(ctx context.Context) bool {
 	return true
 }
 
-func (wfc *WorkflowController) podWorker() {
-	for wfc.processNextPodItem() {
-	}
-}
-
-// processNextPodItem is the worker logic for handling pod updates.
-// For pods updates, this simply means to "wake up" the workflow by
-// adding the corresponding workflow key into the workflow workqueue.
-func (wfc *WorkflowController) processNextPodItem() bool {
-	key, quit := wfc.podQueue.Get()
+func (wfc *WorkflowController) processNextArchiveItem(ctx context.Context) bool {
+	key, quit := wfc.wfArchiveQueue.Get()
 	if quit {
 		return false
 	}
-	defer wfc.podQueue.Done(key)
+	defer wfc.wfArchiveQueue.Done(key)
 
-	obj, exists, err := wfc.podInformer.GetIndexer().GetByKey(key.(string))
+	obj, exists, err := wfc.wfInformer.GetIndexer().GetByKey(key.(string))
 	if err != nil {
-		log.WithFields(log.Fields{"key": key, "error": err}).Error("Failed to get pod from informer index")
+		log.WithFields(log.Fields{"key": key, "error": err}).Error("Failed to get workflow from informer")
 		return true
 	}
 	if !exists {
-		// we can get here if pod was queued into the pod workqueue,
-		// but it was either deleted or labeled completed by the time
-		// we dequeued it.
 		return true
 	}
 
-	err = wfc.enqueueWfFromPodLabel(obj)
-	if err != nil {
-		log.WithError(err).Warnf("Failed to enqueue the workflow for %s", key)
-	}
+	wfc.archiveWorkflow(ctx, obj)
 	return true
+}
+
+func (wfc *WorkflowController) getWorkflowByKey(key string) (interface{}, bool) {
+	obj, exists, err := wfc.wfInformer.GetIndexer().GetByKey(key)
+	if err != nil {
+		log.WithFields(log.Fields{"key": key, "error": err}).Error("Failed to get workflow from informer")
+		return nil, false
+	}
+	if !exists {
+		// This happens after a workflow was labeled with completed=true
+		// or was deleted, but the work queue still had an entry for it.
+		return nil, false
+	}
+	return obj, true
+}
+
+func reconciliationNeeded(wf metav1.Object) bool {
+	return wf.GetLabels()[common.LabelKeyCompleted] != "true" || slices.Contains(wf.GetFinalizers(), common.FinalizerArtifactGC)
 }
 
 // enqueueWfFromPodLabel will extract the workflow name from pod label and
@@ -770,7 +960,16 @@ func (wfc *WorkflowController) enqueueWfFromPodLabel(obj interface{}) error {
 	return nil
 }
 
-func (wfc *WorkflowController) tweakListOptions(options *metav1.ListOptions) {
+func (wfc *WorkflowController) tweakListRequestListOptions(options *metav1.ListOptions) {
+	labelSelector := labels.NewSelector().
+		Add(util.InstanceIDRequirement(wfc.Config.InstanceID))
+	options.LabelSelector = labelSelector.String()
+	// `ResourceVersion=0` does not honor the `limit` in API calls, which results in making significant List calls
+	// without `limit`. For details, see https://github.com/argoproj/argo-workflows/pull/11343
+	options.ResourceVersion = ""
+}
+
+func (wfc *WorkflowController) tweakWatchRequestListOptions(options *metav1.ListOptions) {
 	labelSelector := labels.NewSelector().
 		Add(util.InstanceIDRequirement(wfc.Config.InstanceID))
 	options.LabelSelector = labelSelector.String()
@@ -792,13 +991,81 @@ func getWfPriority(obj interface{}) (int32, time.Time) {
 	return int32(priority), un.GetCreationTimestamp().Time
 }
 
-func (wfc *WorkflowController) addWorkflowInformerHandlers(ctx context.Context) {
-	wfc.wfInformer.AddEventHandler(
+// 10 minutes in the past
+const maxCompletedStoreTime = time.Second * -600
+
+// This is a helper function for expiring old records of workflows
+// completed more than maxCompletedStoreTime ago
+func (wfc *WorkflowController) cleanCompletedWorkflowsRecord() {
+	cutoff := time.Now().Add(maxCompletedStoreTime)
+	removeIndex := -1
+	wfc.recentCompletions.mutex.Lock()
+	defer wfc.recentCompletions.mutex.Unlock()
+
+	for i, val := range wfc.recentCompletions.completions {
+		if val.when.After(cutoff) {
+			removeIndex = i - 1
+			break
+		}
+	}
+	if removeIndex >= 0 {
+		wfc.recentCompletions.completions = wfc.recentCompletions.completions[removeIndex+1:]
+	}
+}
+
+// Records a workflow as recently completed in the list
+// if it isn't already in the list
+func (wfc *WorkflowController) recordCompletedWorkflow(key string) {
+	if !wfc.checkRecentlyCompleted(key) {
+		wfc.recentCompletions.mutex.Lock()
+		defer wfc.recentCompletions.mutex.Unlock()
+		wfc.recentCompletions.completions = append(wfc.recentCompletions.completions,
+			recentlyCompletedWorkflow{
+				key:  key,
+				when: time.Now(),
+			})
+	}
+}
+
+// Returns true if the workflow given by key is in the recently completed
+// list. Will perform expiry cleanup before checking.
+func (wfc *WorkflowController) checkRecentlyCompleted(key string) bool {
+	wfc.cleanCompletedWorkflowsRecord()
+	recent := false
+	wfc.recentCompletions.mutex.RLock()
+	defer wfc.recentCompletions.mutex.RUnlock()
+	for _, val := range wfc.recentCompletions.completions {
+		if val.key == key {
+			recent = true
+			break
+		}
+	}
+	return recent
+}
+
+func (wfc *WorkflowController) addWorkflowInformerHandlers(ctx context.Context) error {
+	_, err := wfc.wfInformer.AddEventHandler(
 		cache.FilteringResourceEventHandler{
+			// FilterFunc is called for every operation affecting the
+			// informer cache and can be used to reject things from
+			// the cache. When they are rejected (this returns false)
+			// they will be deleted.
 			FilterFunc: func(obj interface{}) bool {
-				return !common.UnstructuredHasCompletedLabel(obj)
+				un, ok := obj.(*unstructured.Unstructured)
+				if !ok {
+					log.Warnf("Workflow FilterFunc: '%v' is not an unstructured", obj)
+					return false
+				}
+				needed := reconciliationNeeded(un)
+				if !needed {
+					key, _ := cache.MetaNamespaceKeyFunc(un)
+					wfc.recordCompletedWorkflow(key)
+				}
+				return needed
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
+				// This function is called when a new to the informer object
+				// is to be added to the informer
 				AddFunc: func(obj interface{}) {
 					key, err := cache.MetaNamespaceKeyFunc(obj)
 					if err == nil {
@@ -808,6 +1075,8 @@ func (wfc *WorkflowController) addWorkflowInformerHandlers(ctx context.Context) 
 						wfc.throttler.Add(key, priority, creation)
 					}
 				},
+				// This function is called when an updated (we already know about this object)
+				// is to be updated in the informer
 				UpdateFunc: func(old, new interface{}) {
 					oldWf, newWf := old.(*unstructured.Unstructured), new.(*unstructured.Unstructured)
 					// this check is very important to prevent doing many reconciliations we do not need to do
@@ -821,12 +1090,30 @@ func (wfc *WorkflowController) addWorkflowInformerHandlers(ctx context.Context) 
 						wfc.throttler.Add(key, priority, creation)
 					}
 				},
+				// This function is called when an object is to be removed
+				// from the informer
 				DeleteFunc: func(obj interface{}) {
 					// IndexerInformer uses a delta queue, therefore for deletes we have to use this
 					// key function.
+
+					// Remove finalizers from Pods if they exist before deletion
+					pods := wfc.kubeclientset.CoreV1().Pods(wfc.GetManagedNamespace())
+					podList, err := pods.List(ctx, metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s", common.LabelKeyWorkflow, obj.(*unstructured.Unstructured).GetName()),
+					})
+					if err != nil {
+						log.WithError(err).Error("Failed to list pods")
+					}
+					for _, p := range podList.Items {
+						if err := wfc.enablePodForDeletion(ctx, pods, p.Namespace, p.Name, false); err != nil {
+							log.WithError(err).Error("Failed to enable pod for deletion")
+						}
+					}
+
 					key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 					if err == nil {
 						wfc.releaseAllWorkflowLocks(obj)
+						wfc.recordCompletedWorkflow(key)
 						// no need to add to the queue - this workflow is done
 						wfc.throttler.Remove(key)
 					}
@@ -834,7 +1121,10 @@ func (wfc *WorkflowController) addWorkflowInformerHandlers(ctx context.Context) 
 			},
 		},
 	)
-	wfc.wfInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+	if err != nil {
+		return err
+	}
+	_, err = wfc.wfInformer.AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: func(obj interface{}) bool {
 			un, ok := obj.(*unstructured.Unstructured)
 			// no need to check the `common.LabelKeyCompleted` as we already know it must be complete
@@ -842,22 +1132,34 @@ func (wfc *WorkflowController) addWorkflowInformerHandlers(ctx context.Context) 
 		},
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				wfc.archiveWorkflow(ctx, obj)
+				key, err := cache.MetaNamespaceKeyFunc(obj)
+				if err == nil {
+					wfc.wfArchiveQueue.Add(key)
+				}
 			},
 			UpdateFunc: func(_, obj interface{}) {
-				wfc.archiveWorkflow(ctx, obj)
+				key, err := cache.MetaNamespaceKeyFunc(obj)
+				if err == nil {
+					wfc.wfArchiveQueue.Add(key)
+				}
 			},
 		},
-	},
-	)
-	wfc.wfInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	})
+	if err != nil {
+		return err
+	}
+	_, err = wfc.wfInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		DeleteFunc: func(obj interface{}) {
 			wf, ok := obj.(*unstructured.Unstructured)
 			if ok { // maybe cache.DeletedFinalStateUnknown
-				wfc.metrics.StopRealtimeMetricsForKey(string(wf.GetUID()))
+				wfc.metrics.StopRealtimeMetricsForWfUID(string(wf.GetUID()))
 			}
 		},
 	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (wfc *WorkflowController) archiveWorkflow(ctx context.Context, obj interface{}) {
@@ -868,6 +1170,11 @@ func (wfc *WorkflowController) archiveWorkflow(ctx context.Context, obj interfac
 	}
 	wfc.workflowKeyLock.Lock(key)
 	defer wfc.workflowKeyLock.Unlock(key)
+	key, err = cache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		log.Error("failed to get key for object after locking")
+		return
+	}
 	err = wfc.archiveWorkflowAux(ctx, obj)
 	if err != nil {
 		log.WithField("key", key).WithError(err).Error("failed to archive workflow")
@@ -920,13 +1227,22 @@ func (wfc *WorkflowController) archiveWorkflowAux(ctx context.Context, obj inter
 	return nil
 }
 
+var (
+	incompleteReq, _ = labels.NewRequirement(common.LabelKeyCompleted, selection.Equals, []string{"false"})
+	workflowReq, _   = labels.NewRequirement(common.LabelKeyWorkflow, selection.Exists, nil)
+)
+
+func (wfc *WorkflowController) instanceIDReq() labels.Requirement {
+	return util.InstanceIDRequirement(wfc.Config.InstanceID)
+}
+
 func (wfc *WorkflowController) newWorkflowPodWatch(ctx context.Context) *cache.ListWatch {
 	c := wfc.kubeclientset.CoreV1().Pods(wfc.GetManagedNamespace())
 	// completed=false
-	incompleteReq, _ := labels.NewRequirement(common.LabelKeyCompleted, selection.Equals, []string{"false"})
 	labelSelector := labels.NewSelector().
+		Add(*workflowReq).
 		Add(*incompleteReq).
-		Add(util.InstanceIDRequirement(wfc.Config.InstanceID))
+		Add(wfc.instanceIDReq())
 
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		options.LabelSelector = labelSelector.String()
@@ -944,23 +1260,25 @@ func (wfc *WorkflowController) newPodInformer(ctx context.Context) cache.SharedI
 	source := wfc.newWorkflowPodWatch(ctx)
 	informer := cache.NewSharedIndexInformer(source, &apiv1.Pod{}, podResyncPeriod, cache.Indexers{
 		indexes.WorkflowIndex: indexes.MetaWorkflowIndexFunc,
+		indexes.NodeIDIndex:   indexes.MetaNodeIDIndexFunc,
 		indexes.PodPhaseIndex: indexes.PodPhaseIndexFunc,
 	})
+	//nolint:errcheck // the error only happens if the informer was stopped, and it hasn't even started (https://github.com/kubernetes/client-go/blob/46588f2726fa3e25b1704d6418190f424f95a990/tools/cache/shared_informer.go#L580)
 	informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				key, err := cache.MetaNamespaceKeyFunc(obj)
+				err := wfc.enqueueWfFromPodLabel(obj)
 				if err != nil {
+					log.WithError(err).Warn("could not enqueue workflow from pod label on add")
 					return
 				}
-				wfc.podQueue.Add(key)
 			},
-			UpdateFunc: func(old, new interface{}) {
-				key, err := cache.MetaNamespaceKeyFunc(new)
+			UpdateFunc: func(old, newVal interface{}) {
+				key, err := cache.MetaNamespaceKeyFunc(newVal)
 				if err != nil {
 					return
 				}
-				oldPod, newPod := old.(*apiv1.Pod), new.(*apiv1.Pod)
+				oldPod, newPod := old.(*apiv1.Pod), newVal.(*apiv1.Pod)
 				if oldPod.ResourceVersion == newPod.ResourceVersion {
 					return
 				}
@@ -969,7 +1287,11 @@ func (wfc *WorkflowController) newPodInformer(ctx context.Context) cache.SharedI
 					diff.LogChanges(oldPod, newPod)
 					return
 				}
-				wfc.podQueue.Add(key)
+				err = wfc.enqueueWfFromPodLabel(newVal)
+				if err != nil {
+					log.WithField("key", key).WithError(err).Warn("could not enqueue workflow from pod label on add")
+					return
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				// IndexerInformer uses a delta queue, therefore for deletes we have to use this
@@ -981,6 +1303,70 @@ func (wfc *WorkflowController) newPodInformer(ctx context.Context) cache.SharedI
 		},
 	)
 	return informer
+}
+
+func (wfc *WorkflowController) newConfigMapInformer() cache.SharedIndexInformer {
+	indexInformer := v1.NewFilteredConfigMapInformer(wfc.kubeclientset, wfc.GetManagedNamespace(), 20*time.Minute, cache.Indexers{
+		indexes.ConfigMapLabelsIndex: indexes.ConfigMapIndexFunc,
+	}, func(opts *metav1.ListOptions) {
+		opts.LabelSelector = common.LabelKeyConfigMapType
+	})
+	log.WithField("executorPlugins", wfc.executorPlugins != nil).Info("Plugins")
+	if wfc.executorPlugins != nil {
+		//nolint:errcheck // the error only happens if the informer was stopped, and it hasn't even started (https://github.com/kubernetes/client-go/blob/46588f2726fa3e25b1704d6418190f424f95a990/tools/cache/shared_informer.go#L580)
+		indexInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				cm, err := meta.Accessor(obj)
+				if err != nil {
+					return false
+				}
+				return cm.GetLabels()[common.LabelKeyConfigMapType] == common.LabelValueTypeConfigMapExecutorPlugin
+			},
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					cm := obj.(*apiv1.ConfigMap)
+					p, err := plugin.FromConfigMap(cm)
+					if err != nil {
+						log.WithField("namespace", cm.GetNamespace()).
+							WithField("name", cm.GetName()).
+							WithError(err).
+							Error("failed to convert configmap to plugin")
+						return
+					}
+					if _, ok := wfc.executorPlugins[cm.GetNamespace()]; !ok {
+						wfc.executorPlugins[cm.GetNamespace()] = map[string]*spec.Plugin{}
+					}
+					wfc.executorPlugins[cm.GetNamespace()][cm.GetName()] = p
+					log.WithField("namespace", cm.GetNamespace()).
+						WithField("name", cm.GetName()).
+						Info("Executor plugin added")
+				},
+				UpdateFunc: func(_, obj interface{}) {
+					cm := obj.(*apiv1.ConfigMap)
+					p, err := plugin.FromConfigMap(cm)
+					if err != nil {
+						log.WithField("namespace", cm.GetNamespace()).
+							WithField("name", cm.GetName()).
+							WithError(err).
+							Error("failed to convert configmap to plugin")
+						return
+					}
+
+					wfc.executorPlugins[cm.GetNamespace()][cm.GetName()] = p
+					log.WithField("namespace", cm.GetNamespace()).
+						WithField("name", cm.GetName()).
+						Info("Executor plugin updated")
+				},
+				DeleteFunc: func(obj interface{}) {
+					key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+					namespace, name, _ := cache.SplitMetaNamespaceKey(key)
+					delete(wfc.executorPlugins[namespace], name)
+					log.WithField("namespace", namespace).WithField("name", name).Info("Executor plugin removed")
+				},
+			},
+		})
+	}
+	return indexInformer
 }
 
 // call this func whenever the configuration changes, or when the workflow informer changes
@@ -1008,52 +1394,32 @@ func (wfc *WorkflowController) GetManagedNamespace() string {
 	return wfc.Config.Namespace
 }
 
-func (wfc *WorkflowController) GetContainerRuntimeExecutor(labels labels.Labels) string {
-	if wfc.containerRuntimeExecutor != "" {
-		return wfc.containerRuntimeExecutor
-	}
-	executor, err := wfc.Config.GetContainerRuntimeExecutor(labels)
-	if err != nil {
-		log.WithError(err).Info("failed to determine container runtime executor")
-	}
-	return executor
+func (wfc *WorkflowController) getMaxStackDepth() int {
+	return maxAllowedStackDepth
 }
 
-func (wfc *WorkflowController) getMetricsServerConfig() (metrics.ServerConfig, metrics.ServerConfig) {
+func (wfc *WorkflowController) getMetricsServerConfig() *telemetry.Config {
 	// Metrics config
-	path := wfc.Config.MetricsConfig.Path
-	if path == "" {
-		path = metrics.DefaultMetricsServerPath
+	modifiers := make(map[string]telemetry.Modifier)
+	for name, modifier := range wfc.Config.MetricsConfig.Modifiers {
+		modifiers[name] = telemetry.Modifier{
+			Disabled:           modifier.Disabled,
+			DisabledAttributes: modifier.DisabledAttributes,
+			HistogramBuckets:   modifier.HistogramBuckets,
+		}
 	}
-	port := wfc.Config.MetricsConfig.Port
-	if port == 0 {
-		port = metrics.DefaultMetricsServerPort
-	}
-	metricsConfig := metrics.ServerConfig{
+
+	metricsConfig := telemetry.Config{
 		Enabled:      wfc.Config.MetricsConfig.Enabled == nil || *wfc.Config.MetricsConfig.Enabled,
-		Path:         path,
-		Port:         port,
+		Path:         wfc.Config.MetricsConfig.Path,
+		Port:         wfc.Config.MetricsConfig.Port,
 		TTL:          time.Duration(wfc.Config.MetricsConfig.MetricsTTL),
 		IgnoreErrors: wfc.Config.MetricsConfig.IgnoreErrors,
+		Secure:       wfc.Config.MetricsConfig.GetSecure(true),
+		Modifiers:    modifiers,
+		Temporality:  wfc.Config.MetricsConfig.GetTemporality(),
 	}
-
-	// Telemetry config
-	path = metricsConfig.Path
-	if wfc.Config.TelemetryConfig.Path != "" {
-		path = wfc.Config.TelemetryConfig.Path
-	}
-
-	port = metricsConfig.Port
-	if wfc.Config.TelemetryConfig.Port > 0 {
-		port = wfc.Config.TelemetryConfig.Port
-	}
-	telemetryConfig := metrics.ServerConfig{
-		Enabled:      wfc.Config.TelemetryConfig.Enabled == nil || *wfc.Config.TelemetryConfig.Enabled,
-		Path:         path,
-		Port:         port,
-		IgnoreErrors: wfc.Config.TelemetryConfig.IgnoreErrors,
-	}
-	return metricsConfig, telemetryConfig
+	return &metricsConfig
 }
 
 func (wfc *WorkflowController) releaseAllWorkflowLocks(obj interface{}) {
@@ -1076,33 +1442,93 @@ func (wfc *WorkflowController) isArchivable(wf *wfv1.Workflow) bool {
 	return wfc.archiveLabelSelector.Matches(labels.Set(wf.Labels))
 }
 
-func (wfc *WorkflowController) syncWorkflowPhaseMetrics() {
-	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
-
-	for _, phase := range []wfv1.NodePhase{wfv1.NodePending, wfv1.NodeRunning, wfv1.NodeSucceeded, wfv1.NodeFailed, wfv1.NodeError} {
-		keys, err := wfc.wfInformer.GetIndexer().IndexKeys(indexes.WorkflowPhaseIndex, string(phase))
-		errors.CheckError(err)
-		wfc.metrics.SetWorkflowPhaseGauge(phase, len(keys))
+func (wfc *WorkflowController) getWorkflowPhaseMetrics() map[string]int64 {
+	result := make(map[string]int64, 0)
+	if wfc.wfInformer != nil {
+		for _, phase := range []wfv1.NodePhase{wfv1.NodePending, wfv1.NodeRunning, wfv1.NodeSucceeded, wfv1.NodeFailed, wfv1.NodeError} {
+			keys, err := wfc.wfInformer.GetIndexer().IndexKeys(indexes.WorkflowPhaseIndex, string(phase))
+			errors.CheckError(err)
+			result[string(phase)] = int64(len(keys))
+		}
 	}
-	for _, x := range []wfv1.Condition{
-		{Type: wfv1.ConditionTypePodRunning, Status: metav1.ConditionTrue},
-		{Type: wfv1.ConditionTypePodRunning, Status: metav1.ConditionFalse},
-	} {
-		keys, err := wfc.wfInformer.GetIndexer().IndexKeys(indexes.ConditionsIndex, indexes.ConditionValue(x))
-		errors.CheckError(err)
-		metrics.WorkflowConditionMetric.WithLabelValues(string(x.Type), string(x.Status)).Set(float64(len(keys)))
-	}
+	return result
 }
 
-func (wfc *WorkflowController) syncPodPhaseMetrics() {
-	defer runtimeutil.HandleCrash(runtimeutil.PanicHandlers...)
-
-	for _, phase := range []apiv1.PodPhase{apiv1.PodRunning, apiv1.PodPending} {
-		objs, err := wfc.podInformer.GetIndexer().IndexKeys(indexes.PodPhaseIndex, string(phase))
-		if err != nil {
-			log.WithError(err).Error("failed to list active pods")
-			return
+func (wfc *WorkflowController) getWorkflowConditionMetrics() map[wfv1.Condition]int64 {
+	result := make(map[wfv1.Condition]int64, 0)
+	if wfc.wfInformer != nil {
+		for _, x := range []wfv1.Condition{
+			{Type: wfv1.ConditionTypePodRunning, Status: metav1.ConditionTrue},
+			{Type: wfv1.ConditionTypePodRunning, Status: metav1.ConditionFalse},
+		} {
+			keys, err := wfc.wfInformer.GetIndexer().IndexKeys(indexes.ConditionsIndex, indexes.ConditionValue(x))
+			errors.CheckError(err)
+			result[x] = int64(len(keys))
 		}
-		wfc.metrics.SetPodPhaseGauge(phase, len(objs))
 	}
+	return result
+}
+
+func (wfc *WorkflowController) getPodPhaseMetrics() map[string]int64 {
+	result := make(map[string]int64, 0)
+	if wfc.podInformer != nil {
+		for _, phase := range []apiv1.PodPhase{apiv1.PodRunning, apiv1.PodPending} {
+			objs, err := wfc.podInformer.GetIndexer().IndexKeys(indexes.PodPhaseIndex, string(phase))
+			if err != nil {
+				log.WithError(err).Errorf("failed to  list pods in phase %s", phase)
+			} else {
+				result[string(phase)] = int64(len(objs))
+			}
+		}
+	}
+	return result
+}
+
+func (wfc *WorkflowController) newWorkflowTaskSetInformer() wfextvv1alpha1.WorkflowTaskSetInformer {
+	informer := externalversions.NewSharedInformerFactoryWithOptions(
+		wfc.wfclientset,
+		workflowTaskSetResyncPeriod,
+		externalversions.WithNamespace(wfc.GetManagedNamespace()),
+		externalversions.WithTweakListOptions(func(x *metav1.ListOptions) {
+			r := util.InstanceIDRequirement(wfc.Config.InstanceID)
+			x.LabelSelector = r.String()
+		})).Argoproj().V1alpha1().WorkflowTaskSets()
+	//nolint:errcheck // the error only happens if the informer was stopped, and it hasn't even started (https://github.com/kubernetes/client-go/blob/46588f2726fa3e25b1704d6418190f424f95a990/tools/cache/shared_informer.go#L580)
+	informer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			UpdateFunc: func(old, new interface{}) {
+				key, err := cache.MetaNamespaceKeyFunc(new)
+				if err == nil {
+					wfc.wfQueue.AddRateLimited(key)
+				}
+			},
+		})
+	return informer
+}
+
+func (wfc *WorkflowController) newArtGCTaskInformer() wfextvv1alpha1.WorkflowArtifactGCTaskInformer {
+	informer := externalversions.NewSharedInformerFactoryWithOptions(
+		wfc.wfclientset,
+		workflowTaskSetResyncPeriod,
+		externalversions.WithNamespace(wfc.GetManagedNamespace()),
+		externalversions.WithTweakListOptions(func(x *metav1.ListOptions) {
+			r := util.InstanceIDRequirement(wfc.Config.InstanceID)
+			x.LabelSelector = r.String()
+		})).Argoproj().V1alpha1().WorkflowArtifactGCTasks()
+	//nolint:errcheck // the error only happens if the informer was stopped, and it hasn't even started (https://github.com/kubernetes/client-go/blob/46588f2726fa3e25b1704d6418190f424f95a990/tools/cache/shared_informer.go#L580)
+	informer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			UpdateFunc: func(old, new interface{}) {
+				key, err := cache.MetaNamespaceKeyFunc(new)
+				if err == nil {
+					wfc.wfQueue.AddRateLimited(key)
+				}
+			},
+		})
+	return informer
+}
+
+func (wfc *WorkflowController) IsLeader() bool {
+	// the wfc.wfInformer is nil if it is not the leader
+	return !(wfc.wfInformer == nil)
 }

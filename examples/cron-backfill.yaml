@@ -9,16 +9,15 @@ spec:
   arguments:
     parameters:
       - name: date
+        # use "yesterday" is a magic value to tell the script it needs to determine the day to run
+        value: yesterday
   templates:
     - name: main
       inputs:
         parameters:
           - name: date
-            value: "{{inputs.parameters.date}}"
-            # use "yesterday" is a magic value to tell the script it needs to determine the day to run
-            default: yesterday
       script:
-        image: docker/whalesay:latest
+        image: busybox
         command:
           - sh
         source: |

@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/argoproj/argo-workflows/v3/cmd/argo/commands/common"
 	workflowpkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflow"
 	workflowmocks "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflow/mocks"
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
@@ -20,14 +21,14 @@ func Test_resubmitWorkflows(t *testing.T) {
 		resubmitOpts := resubmitOps{
 			namespace: "argo",
 		}
-		cliSubmitOpts := cliSubmitOpts{}
+		cliSubmitOpts := common.CliSubmitOpts{}
 
 		c.On("ResubmitWorkflow", mock.Anything, mock.Anything).Return(&wfv1.Workflow{}, nil)
 
 		err := resubmitWorkflows(context.Background(), c, resubmitOpts, cliSubmitOpts, []string{"foo", "bar"})
 		c.AssertNumberOfCalls(t, "ResubmitWorkflow", 2)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Resubmit workflow with memoization", func(t *testing.T) {
@@ -36,7 +37,7 @@ func Test_resubmitWorkflows(t *testing.T) {
 			namespace: "argo",
 			memoized:  true,
 		}
-		cliSubmitOpts := cliSubmitOpts{}
+		cliSubmitOpts := common.CliSubmitOpts{}
 
 		c.On("ResubmitWorkflow", mock.Anything, mock.Anything).Return(&wfv1.Workflow{}, nil)
 
@@ -48,7 +49,7 @@ func Test_resubmitWorkflows(t *testing.T) {
 			Memoized:  true,
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Resubmit workflow by selector", func(t *testing.T) {
@@ -57,13 +58,14 @@ func Test_resubmitWorkflows(t *testing.T) {
 			namespace:     "argo",
 			labelSelector: "custom-label=true",
 		}
-		cliSubmitOpts := cliSubmitOpts{}
+		cliSubmitOpts := common.CliSubmitOpts{}
 
 		wfListReq := &workflowpkg.WorkflowListRequest{
 			Namespace: "argo",
 			ListOptions: &metav1.ListOptions{
 				LabelSelector: resubmitOpts.labelSelector,
 			},
+			Fields: defaultFields,
 		}
 
 		wfList := &wfv1.WorkflowList{Items: wfv1.Workflows{
@@ -87,7 +89,7 @@ func Test_resubmitWorkflows(t *testing.T) {
 			c.AssertCalled(t, "ResubmitWorkflow", mock.Anything, resubmitReq)
 		}
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Resubmit workflow by selector and name", func(t *testing.T) {
@@ -96,13 +98,14 @@ func Test_resubmitWorkflows(t *testing.T) {
 			namespace:     "argo",
 			labelSelector: "custom-label=true",
 		}
-		cliSubmitOpts := cliSubmitOpts{}
+		cliSubmitOpts := common.CliSubmitOpts{}
 
 		wfListReq := &workflowpkg.WorkflowListRequest{
 			Namespace: "argo",
 			ListOptions: &metav1.ListOptions{
 				LabelSelector: resubmitOpts.labelSelector,
 			},
+			Fields: defaultFields,
 		}
 
 		wfList := &wfv1.WorkflowList{Items: wfv1.Workflows{
@@ -136,7 +139,7 @@ func Test_resubmitWorkflows(t *testing.T) {
 			Memoized:  false,
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Resubmit workflow list error", func(t *testing.T) {
@@ -145,10 +148,10 @@ func Test_resubmitWorkflows(t *testing.T) {
 			namespace:     "argo",
 			labelSelector: "custom-label=true",
 		}
-		cliSubmitOpts := cliSubmitOpts{}
+		cliSubmitOpts := common.CliSubmitOpts{}
 		c.On("ListWorkflows", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("mock error"))
 		err := resubmitWorkflows(context.Background(), c, resubmitOpts, cliSubmitOpts, []string{})
-		assert.Errorf(t, err, "mock error")
+		require.Errorf(t, err, "mock error")
 	})
 
 	t.Run("Resubmit workflow error", func(t *testing.T) {
@@ -156,9 +159,9 @@ func Test_resubmitWorkflows(t *testing.T) {
 		resubmitOpts := resubmitOps{
 			namespace: "argo",
 		}
-		cliSubmitOpts := cliSubmitOpts{}
+		cliSubmitOpts := common.CliSubmitOpts{}
 		c.On("ResubmitWorkflow", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("mock error"))
 		err := resubmitWorkflows(context.Background(), c, resubmitOpts, cliSubmitOpts, []string{"foo"})
-		assert.Errorf(t, err, "mock error")
+		require.Errorf(t, err, "mock error")
 	})
 }

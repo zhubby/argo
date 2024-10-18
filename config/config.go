@@ -2,38 +2,35 @@ package config
 
 import (
 	"fmt"
-	"path"
+	"math"
+	"net/url"
+	"time"
 
+	metricsdk "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo-workflows/v3/workflow/common"
 )
 
-var EmptyConfigFunc = func() interface{} { return &Config{} }
+type ResourceRateLimit struct {
+	Limit float64 `json:"limit"`
+	Burst int     `json:"burst"`
+}
 
-// Config contain the configuration settings for the workflow controller
+// Config contains the configuration settings for the workflow controller
 type Config struct {
 
-	// NodeEvents configures how node events are omitted
+	// NodeEvents configures how node events are emitted
 	NodeEvents NodeEvents `json:"nodeEvents,omitempty"`
 
-	// ExecutorImage is the image name of the executor to use when running pods
-	// DEPRECATED: use --executor-image flag to workflow-controller instead
-	ExecutorImage string `json:"executorImage,omitempty"`
-
-	// ExecutorImagePullPolicy is the imagePullPolicy of the executor to use when running pods
-	// DEPRECATED: use `executor.imagePullPolicy` in configmap instead
-	ExecutorImagePullPolicy string `json:"executorImagePullPolicy,omitempty"`
+	// WorkflowEvents configures how workflow events are emitted
+	WorkflowEvents WorkflowEvents `json:"workflowEvents,omitempty"`
 
 	// Executor holds container customizations for the executor to use when running pods
 	Executor *apiv1.Container `json:"executor,omitempty"`
-
-	// ExecutorResources specifies the resource requirements that will be used for the executor sidecar
-	// DEPRECATED: use `executor.resources` in configmap instead
-	ExecutorResources *apiv1.ResourceRequirements `json:"executorResources,omitempty"`
 
 	// MainContainer holds container customization for the main container
 	MainContainer *apiv1.Container `json:"mainContainer,omitempty"`
@@ -41,22 +38,10 @@ type Config struct {
 	// KubeConfig specifies a kube config file for the wait & init containers
 	KubeConfig *KubeConfig `json:"kubeConfig,omitempty"`
 
-	// ContainerRuntimeExecutor specifies the container runtime interface to use, default is docker
-	ContainerRuntimeExecutor string `json:"containerRuntimeExecutor,omitempty"`
-
-	ContainerRuntimeExecutors ContainerRuntimeExecutors `json:"containerRuntimeExecutors,omitempty"`
-
-	// KubeletPort is needed when using the kubelet containerRuntimeExecutor, default to 10250
-	KubeletPort int `json:"kubeletPort,omitempty"`
-
-	// KubeletInsecure disable the TLS verification of the kubelet containerRuntimeExecutor, default to false
-	KubeletInsecure bool `json:"kubeletInsecure,omitempty"`
-
 	// ArtifactRepository contains the default location of an artifact repository for container artifacts
-	ArtifactRepository ArtifactRepository `json:"artifactRepository,omitempty"`
+	ArtifactRepository wfv1.ArtifactRepository `json:"artifactRepository,omitempty"`
 
 	// Namespace is a label selector filter to limit the controller's watch to a specific namespace
-	// DEPRECATED: support will be remove in a future release
 	Namespace string `json:"namespace,omitempty"`
 
 	// InstanceID is a label selector to limit the controller's watch to a specific instance. It
@@ -79,14 +64,20 @@ type Config struct {
 	// Parallelism limits the max total parallel workflows that can execute at the same time
 	Parallelism int `json:"parallelism,omitempty"`
 
+	// NamespaceParallelism limits the max workflows that can execute at the same time in a namespace
+	NamespaceParallelism int `json:"namespaceParallelism,omitempty"`
+
+	// ResourceRateLimit limits the rate at which pods are created
+	ResourceRateLimit *ResourceRateLimit `json:"resourceRateLimit,omitempty"`
+
 	// Persistence contains the workflow persistence DB configuration
 	Persistence *PersistConfig `json:"persistence,omitempty"`
 
 	// Links to related apps.
 	Links []*wfv1.Link `json:"links,omitempty"`
 
-	// Config customized Docker Sock path
-	DockerSockPath string `json:"dockerSockPath,omitempty"`
+	// Columns are custom columns that will be exposed in the Workflow List View.
+	Columns []*wfv1.Column `json:"columns,omitempty"`
 
 	// WorkflowDefaults are values that will apply to all Workflows from this controller, unless overridden on the Workflow-level
 	WorkflowDefaults *wfv1.Workflow `json:"workflowDefaults,omitempty"`
@@ -94,32 +85,86 @@ type Config struct {
 	// PodSpecLogStrategy enables the logging of podspec on controller log.
 	PodSpecLogStrategy PodSpecLogStrategy `json:"podSpecLogStrategy,omitempty"`
 
-	// PodGCGracePeriodSeconds specifies the duration in seconds before the pods in the GC queue get deleted.
-	// Value must be non-negative integer. A zero value indicates that the pods will be deleted immediately
-	// as soon as they arrived in the pod GC queue.
-	// Defaults to 30 seconds.
+	// PodGCGracePeriodSeconds specifies the duration in seconds before a terminating pod is forcefully killed.
+	// Value must be non-negative integer. A zero value indicates that the pod will be forcefully terminated immediately.
+	// Defaults to the Kubernetes default of 30 seconds.
 	PodGCGracePeriodSeconds *int64 `json:"podGCGracePeriodSeconds,omitempty"`
+
+	// PodGCDeleteDelayDuration specifies the duration before pods in the GC queue get deleted.
+	// Value must be non-negative. A zero value indicates that the pods will be deleted immediately.
+	// Defaults to 5 seconds.
+	PodGCDeleteDelayDuration *metav1.Duration `json:"podGCDeleteDelayDuration,omitempty"`
 
 	// WorkflowRestrictions restricts the controller to executing Workflows that meet certain restrictions
 	WorkflowRestrictions *WorkflowRestrictions `json:"workflowRestrictions,omitempty"`
 
-	// Adding configurable initial delay (for K8S clusters with mutating webhooks) to prevent workflow getting modified by MWC.
+	// Adds configurable initial delay (for K8S clusters with mutating webhooks) to prevent workflow getting modified by MWC.
 	InitialDelay metav1.Duration `json:"initialDelay,omitempty"`
 
 	// The command/args for each image, needed when the command is not specified and the emissary executor is used.
-	// https://argoproj.github.io/argo-workflows/workflow-executors/#emissary-emissary
+	// https://argo-workflows.readthedocs.io/en/latest/workflow-executors/#emissary-emissary
 	Images map[string]Image `json:"images,omitempty"`
+
+	// Workflow retention by number of workflows
+	RetentionPolicy *RetentionPolicy `json:"retentionPolicy,omitempty"`
+
+	// NavColor is an ui navigation bar background color
+	NavColor string `json:"navColor,omitempty"`
+
+	// SSO in settings for single-sign on
+	SSO SSOConfig `json:"sso,omitempty"`
 }
 
-func (c Config) GetContainerRuntimeExecutor(labels labels.Labels) (string, error) {
-	name, err := c.ContainerRuntimeExecutors.Select(labels)
-	if err != nil {
-		return "", err
+func (c Config) GetExecutor() *apiv1.Container {
+	if c.Executor != nil {
+		return c.Executor
 	}
-	if name != "" {
-		return name, nil
+	return &apiv1.Container{}
+}
+
+func (c Config) GetResourceRateLimit() ResourceRateLimit {
+	if c.ResourceRateLimit != nil {
+		return *c.ResourceRateLimit
 	}
-	return c.ContainerRuntimeExecutor, nil
+	return ResourceRateLimit{
+		Limit: math.MaxFloat32,
+		Burst: math.MaxInt32,
+	}
+}
+
+func (c Config) GetPodGCDeleteDelayDuration() time.Duration {
+	if c.PodGCDeleteDelayDuration == nil {
+		return 5 * time.Second
+	}
+
+	return c.PodGCDeleteDelayDuration.Duration
+}
+
+func (c Config) ValidateProtocol(inputProtocol string, allowedProtocol []string) error {
+	for _, protocol := range allowedProtocol {
+		if inputProtocol == protocol {
+			return nil
+		}
+	}
+	return fmt.Errorf("protocol %s is not allowed", inputProtocol)
+}
+
+func (c *Config) Sanitize(allowedProtocol []string) error {
+	links := c.Links
+
+	for _, link := range links {
+		// We only validate user-supplied URL but not encode/decode it
+		// see 2.4.2 on https://www.ietf.org/rfc/rfc2396.txt
+		u, err := url.Parse(link.URL)
+		if err != nil {
+			return err
+		}
+		err = c.ValidateProtocol(u.Scheme, allowedProtocol)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // PodSpecLogStrategy contains the configuration for logging the pod spec in controller log for debugging purpose
@@ -141,61 +186,6 @@ type KubeConfig struct {
 	VolumeName string `json:"volumeName,omitempty"`
 	// MountPath of the kubeconfig secret, default to '/kube/config'
 	MountPath string `json:"mountPath,omitempty"`
-}
-
-// ArtifactRepository represents an artifact repository in which a controller will store its artifacts
-type ArtifactRepository struct {
-	// ArchiveLogs enables log archiving
-	ArchiveLogs *bool `json:"archiveLogs,omitempty"`
-	// S3 stores artifact in a S3-compliant object store
-	S3 *S3ArtifactRepository `json:"s3,omitempty"`
-	// Artifactory stores artifacts to JFrog Artifactory
-	Artifactory *ArtifactoryArtifactRepository `json:"artifactory,omitempty"`
-	// HDFS stores artifacts in HDFS
-	HDFS *HDFSArtifactRepository `json:"hdfs,omitempty"`
-	// OSS stores artifact in a OSS-compliant object store
-	OSS *OSSArtifactRepository `json:"oss,omitempty"`
-	// GCS stores artifact in a GCS object store
-	GCS *GCSArtifactRepository `json:"gcs,omitempty"`
-}
-
-func (a *ArtifactRepository) IsArchiveLogs() bool {
-	return a != nil && a.ArchiveLogs != nil && *a.ArchiveLogs
-}
-
-type ArtifactRepositoryType interface {
-	IntoArtifactLocation(l *wfv1.ArtifactLocation)
-}
-
-func (a *ArtifactRepository) Get() ArtifactRepositoryType {
-	if a == nil {
-		return nil
-	} else if a.Artifactory != nil {
-		return a.Artifactory
-	} else if a.GCS != nil {
-		return a.GCS
-	} else if a.HDFS != nil {
-		return a.HDFS
-	} else if a.OSS != nil {
-		return a.OSS
-	} else if a.S3 != nil {
-		return a.S3
-	}
-	return nil
-}
-
-// ToArtifactLocation returns the artifact location set with default template key:
-// key = `{{workflow.name}}/{{pod.name}}`
-func (a *ArtifactRepository) ToArtifactLocation() *wfv1.ArtifactLocation {
-	if a == nil {
-		return nil
-	}
-	l := &wfv1.ArtifactLocation{ArchiveLogs: a.ArchiveLogs}
-	v := a.Get()
-	if v != nil {
-		v.IntoArtifactLocation(l)
-	}
-	return l
 }
 
 type PersistConfig struct {
@@ -260,92 +250,23 @@ type MySQLConfig struct {
 	Options map[string]string `json:"options,omitempty"`
 }
 
-// S3ArtifactRepository defines the controller configuration for an S3 artifact repository
-type S3ArtifactRepository struct {
-	wfv1.S3Bucket `json:",inline"`
-
-	// KeyFormat is defines the format of how to store keys. Can reference workflow variables
-	KeyFormat string `json:"keyFormat,omitempty"`
-
-	// KeyPrefix is prefix used as part of the bucket key in which the controller will store artifacts.
-	// DEPRECATED. Use KeyFormat instead
-	KeyPrefix string `json:"keyPrefix,omitempty"`
+// MetricModifier are modifiers for an individual named metric to change their behaviour
+type MetricModifier struct {
+	// Disabled disables the emission of this metric completely
+	Disabled bool `json:"disabled,omitempty"`
+	// DisabledAttributes lists labels for this metric to remove that attributes to save on cardinality
+	DisabledAttributes []string `json:"disabledAttributes"`
+	// HistogramBuckets allow configuring of the buckets used in a histogram
+	// Has no effect on non-histogram buckets
+	HistogramBuckets []float64 `json:"histogramBuckets,omitempty"`
 }
 
-func (r *S3ArtifactRepository) IntoArtifactLocation(l *wfv1.ArtifactLocation) {
-	k := r.KeyFormat
-	if k == "" {
-		k = path.Join(r.KeyPrefix, common.DefaultArchivePattern)
-	}
-	l.S3 = &wfv1.S3Artifact{S3Bucket: r.S3Bucket, Key: k}
-}
+type MetricsTemporality string
 
-// OSSArtifactRepository defines the controller configuration for an OSS artifact repository
-type OSSArtifactRepository struct {
-	wfv1.OSSBucket `json:",inline"`
-
-	// KeyFormat is defines the format of how to store keys. Can reference workflow variables
-	KeyFormat string `json:"keyFormat,omitempty"`
-}
-
-func (r *OSSArtifactRepository) IntoArtifactLocation(l *wfv1.ArtifactLocation) {
-	k := r.KeyFormat
-	if k == "" {
-		k = common.DefaultArchivePattern
-	}
-	l.OSS = &wfv1.OSSArtifact{OSSBucket: r.OSSBucket, Key: k}
-}
-
-// GCSArtifactRepository defines the controller configuration for a GCS artifact repository
-type GCSArtifactRepository struct {
-	wfv1.GCSBucket `json:",inline"`
-
-	// KeyFormat is defines the format of how to store keys. Can reference workflow variables
-	KeyFormat string `json:"keyFormat,omitempty"`
-}
-
-func (r *GCSArtifactRepository) IntoArtifactLocation(l *wfv1.ArtifactLocation) {
-	k := r.KeyFormat
-	if k == "" {
-		k = common.DefaultArchivePattern
-	}
-	l.GCS = &wfv1.GCSArtifact{GCSBucket: r.GCSBucket, Key: k}
-}
-
-// ArtifactoryArtifactRepository defines the controller configuration for an artifactory artifact repository
-type ArtifactoryArtifactRepository struct {
-	wfv1.ArtifactoryAuth `json:",inline"`
-	// RepoURL is the url for artifactory repo.
-	RepoURL string `json:"repoURL,omitempty"`
-}
-
-func (r *ArtifactoryArtifactRepository) IntoArtifactLocation(l *wfv1.ArtifactLocation) {
-	u := ""
-	if r.RepoURL != "" {
-		u = r.RepoURL + "/"
-	}
-	u = fmt.Sprintf("%s%s", u, common.DefaultArchivePattern)
-	l.Artifactory = &wfv1.ArtifactoryArtifact{ArtifactoryAuth: r.ArtifactoryAuth, URL: u}
-}
-
-// HDFSArtifactRepository defines the controller configuration for an HDFS artifact repository
-type HDFSArtifactRepository struct {
-	wfv1.HDFSConfig `json:",inline"`
-
-	// PathFormat is defines the format of path to store a file. Can reference workflow variables
-	PathFormat string `json:"pathFormat,omitempty"`
-
-	// Force copies a file forcibly even if it exists (default: false)
-	Force bool `json:"force,omitempty"`
-}
-
-func (r *HDFSArtifactRepository) IntoArtifactLocation(l *wfv1.ArtifactLocation) {
-	p := r.PathFormat
-	if p == "" {
-		p = common.DefaultArchivePattern
-	}
-	l.HDFS = &wfv1.HDFSArtifact{HDFSConfig: r.HDFSConfig, Path: p, Force: r.Force}
-}
+const (
+	MetricsTemporalityCumulative MetricsTemporality = "Cumulative"
+	MetricsTemporalityDelta      MetricsTemporality = "Delta"
+)
 
 // MetricsConfig defines a config for a metrics server
 type MetricsConfig struct {
@@ -362,6 +283,36 @@ type MetricsConfig struct {
 	Port int `json:"port,omitempty"`
 	// IgnoreErrors is a flag that instructs prometheus to ignore metric emission errors
 	IgnoreErrors bool `json:"ignoreErrors,omitempty"`
+	// Secure is a flag that starts the metrics servers using TLS, defaults to true
+	Secure *bool `json:"secure,omitempty"`
+	// Modifiers configure metrics by name
+	Modifiers map[string]MetricModifier `json:"modifiers,omitempty"`
+	// Temporality of the OpenTelemetry metrics.
+	// Enum of Cumulative or Delta, defaulting to Cumulative.
+	// No effect on Prometheus metrics, which are always Cumulative.
+	Temporality MetricsTemporality `json:"temporality,omitempty"`
+}
+
+func (mc *MetricsConfig) GetSecure(defaultValue bool) bool {
+	if mc.Secure != nil {
+		return *mc.Secure
+	}
+	return defaultValue
+}
+
+func (mc *MetricsConfig) GetTemporality() metricsdk.TemporalitySelector {
+	switch mc.Temporality {
+	case MetricsTemporalityCumulative:
+		return func(metricsdk.InstrumentKind) metricdata.Temporality {
+			return metricdata.CumulativeTemporality
+		}
+	case MetricsTemporalityDelta:
+		return func(metricsdk.InstrumentKind) metricdata.Temporality {
+			return metricdata.DeltaTemporality
+		}
+	default:
+		return metricsdk.DefaultTemporalitySelector
+	}
 }
 
 type WorkflowRestrictions struct {

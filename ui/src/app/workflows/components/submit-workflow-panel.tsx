@@ -1,138 +1,112 @@
-import * as React from 'react';
-import {Parameter, Workflow} from '../../../models';
+import {Select} from 'argo-ui/src/components/select/select';
+import React, {useContext, useMemo, useState} from 'react';
+
+import {Parameter, Template} from '../../../models';
+import {Context} from '../../shared/context';
 import {uiUrl} from '../../shared/base';
 import {ErrorNotice} from '../../shared/components/error-notice';
-import {services} from '../../shared/services';
-
-import {Select} from 'argo-ui';
+import {getValueFromParameter, ParametersInput} from '../../shared/components/parameters-input';
 import {TagsInput} from '../../shared/components/tags-input/tags-input';
+import {services} from '../../shared/services';
 
 interface Props {
     kind: string;
     namespace: string;
     name: string;
     entrypoint: string;
-    entrypoints: string[];
-    parameters: Parameter[];
+    templates: Template[];
+    workflowParameters: Parameter[];
 }
 
-interface State {
-    entrypoint: string;
-    parameters: Parameter[];
-    labels: string[];
-    error?: Error;
-}
+const workflowEntrypoint = '<default>';
+const defaultTemplate: Template = {
+    name: workflowEntrypoint,
+    inputs: {
+        parameters: []
+    }
+};
 
-export class SubmitWorkflowPanel extends React.Component<Props, State> {
-    constructor(props: any) {
-        super(props);
-        this.state = {
-            entrypoint: this.props.entrypoint || (this.props.entrypoints.length > 0 && this.props.entrypoints[0]),
-            parameters: this.props.parameters || [],
-            labels: ['submit-from-ui=true']
-        };
+export function SubmitWorkflowPanel(props: Props) {
+    const {navigation} = useContext(Context);
+    const [entrypoint, setEntrypoint] = useState(workflowEntrypoint);
+    const [parameters, setParameters] = useState<Parameter[]>([]);
+    const [workflowParameters, setWorkflowParameters] = useState<Parameter[]>(JSON.parse(JSON.stringify(props.workflowParameters)));
+    const [labels, setLabels] = useState(['submit-from-ui=true']);
+    const [error, setError] = useState<Error>();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const templates = useMemo(() => {
+        return [defaultTemplate].concat(props.templates);
+    }, [props.templates]);
+
+    const templateOptions = useMemo(() => {
+        return templates.map(t => ({
+            value: t.name,
+            title: t.name
+        }));
+    }, [templates]);
+
+    async function submit() {
+        setIsSubmitting(true);
+        try {
+            const submitted = await services.workflows.submit(props.kind, props.name, props.namespace, {
+                entryPoint: entrypoint === workflowEntrypoint ? null : entrypoint,
+                parameters: [
+                    ...workflowParameters.filter(p => getValueFromParameter(p) !== undefined).map(p => p.name + '=' + getValueFromParameter(p)),
+                    ...parameters.filter(p => getValueFromParameter(p) !== undefined).map(p => p.name + '=' + getValueFromParameter(p))
+                ],
+                labels: labels.join(',')
+            });
+            navigation.goto(uiUrl(`workflows/${submitted.metadata.namespace}/${submitted.metadata.name}`));
+        } catch (err) {
+            setError(err);
+            setIsSubmitting(false);
+        }
     }
 
-    public render() {
-        return (
-            <>
-                <h4>Submit Workflow</h4>
-                <h5>
-                    {this.props.namespace}/{this.props.name}
-                </h5>
-                {this.state.error && <ErrorNotice error={this.state.error} />}
-                <div className='white-box'>
-                    <div key='entrypoint' title='Entrypoint' style={{marginBottom: 25}}>
-                        <label>Entrypoint</label>
-                        <Select
-                            value={this.state.entrypoint}
-                            options={this.props.entrypoints.map((value, index) => ({
-                                value,
-                                title: value
-                            }))}
-                            onChange={selected => this.setState({entrypoint: selected.value})}
-                        />
-                    </div>
-                    <div key='parameters' style={{marginBottom: 25}}>
-                        <label>Parameters</label>
-                        {this.state.parameters.length > 0 ? (
-                            <>
-                                {this.state.parameters.map((parameter, index) => (
-                                    <div key={parameter.name + '_' + index}>
-                                        <label>{parameter.name}</label>
-                                        {(parameter.enum && this.displaySelectFieldForEnumValues(parameter)) || this.displayInputFieldForSingleValue(parameter)}
-                                    </div>
-                                ))}
-                            </>
-                        ) : (
-                            <>
-                                <br />
-                                <label>No parameters</label>
-                            </>
-                        )}
-                    </div>
-                    <div key='labels' style={{marginBottom: 25}}>
-                        <label>Labels</label>
-                        <TagsInput tags={this.state.labels} onChange={labels => this.setState({labels})} />
-                    </div>
-                    <div key='submit'>
-                        <button onClick={() => this.submit()} className='argo-button argo-button--base'>
-                            <i className='fa fa-plus' /> Submit
-                        </button>
-                    </div>
+    return (
+        <>
+            <h4>Submit Workflow</h4>
+            <h5>
+                {props.namespace}/{props.name}
+            </h5>
+            {error && <ErrorNotice error={error} />}
+            <div className='white-box'>
+                <div key='entrypoint' title='Entrypoint' style={{marginBottom: 25}}>
+                    <label>Entrypoint</label>
+                    <Select
+                        value={entrypoint}
+                        options={templateOptions}
+                        onChange={selected => {
+                            const selectedTemp = templates.find(t => t.name === selected.value);
+                            setEntrypoint(selected.value);
+                            setParameters(selectedTemp?.inputs?.parameters || []);
+                        }}
+                    />
                 </div>
-            </>
-        );
-    }
-
-    private displaySelectFieldForEnumValues(parameter: Parameter) {
-        return (
-            <Select
-                key={parameter.name}
-                value={parameter.value}
-                options={parameter.enum.map(value => ({
-                    value,
-                    title: value
-                }))}
-                onChange={event => {
-                    this.setState({
-                        parameters: this.state.parameters.map(p => ({
-                            name: p.name,
-                            value: p.name === parameter.name ? event.value : p.value,
-                            enum: p.enum
-                        }))
-                    });
-                }}
-            />
-        );
-    }
-
-    private displayInputFieldForSingleValue(parameter: Parameter) {
-        return (
-            <input
-                className='argo-field'
-                value={parameter.value}
-                onChange={event => {
-                    this.setState({
-                        parameters: this.state.parameters.map(p => ({
-                            name: p.name,
-                            value: p.name === parameter.name ? event.target.value : p.value,
-                            enum: p.enum
-                        }))
-                    });
-                }}
-            />
-        );
-    }
-
-    private submit() {
-        services.workflows
-            .submit(this.props.kind, this.props.name, this.props.namespace, {
-                entryPoint: this.state.entrypoint,
-                parameters: this.state.parameters.map(p => p.name + '=' + p.value),
-                labels: this.state.labels.join(',')
-            })
-            .then((submitted: Workflow) => (document.location.href = uiUrl(`workflows/${submitted.metadata.namespace}/${submitted.metadata.name}`)))
-            .catch(error => this.setState({error}));
-    }
+                <div key='parameters' style={{marginBottom: 25}}>
+                    <label>Parameters</label>
+                    {workflowParameters.length > 0 && <ParametersInput parameters={workflowParameters} onChange={setWorkflowParameters} />}
+                    {parameters.length > 0 && <ParametersInput parameters={parameters} onChange={setParameters} />}
+                    {workflowParameters.length === 0 && parameters.length === 0 ? (
+                        <>
+                            <br />
+                            <label>No parameters</label>
+                        </>
+                    ) : (
+                        <></>
+                    )}
+                </div>
+                <div key='labels' style={{marginBottom: 25}}>
+                    <label>Labels</label>
+                    <TagsInput tags={labels} onChange={setLabels} />
+                </div>
+                <div key='submit'>
+                    <button onClick={submit} className='argo-button argo-button--base' disabled={isSubmitting}>
+                        <i className='fa fa-plus' /> {isSubmitting ? 'Loading...' : 'Submit'}
+                    </button>
+                </div>
+            </div>
+        </>
+    );
 }

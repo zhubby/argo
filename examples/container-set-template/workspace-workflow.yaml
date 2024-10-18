@@ -4,14 +4,11 @@ metadata:
   generateName: workspace-
   labels:
     workflows.argoproj.io/test: "true"
-    workflows.argoproj.io/container-runtime-executor: emissary
   annotations:
     workflows.argoproj.io/description: |
       This workflow demonstrates using a workspace to share files between containers. This also allows containers not
       called "main" to create output artifacts.
     workflows.argoproj.io/version: ">= 3.1.0"
-    workflows.argoproj.io/verify.py: |
-      assert status["phase"] == "Succeeded"
 spec:
   entrypoint: main
   templates:

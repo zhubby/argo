@@ -3,15 +3,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: data-transformations-
-  labels:
-    workflows.argoproj.io/test: "true"
   annotations:
     workflows.argoproj.io/description: |
       This workflow demonstrates using a data template to list in an S3 bucket
       and then process those log files.
     workflows.argoproj.io/version: ">= 3.1.0"
-    workflows.argoproj.io/verify.py: |
-      assert status["phase"] == "Succeeded"
 spec:
   entrypoint: data-transformations
   templates:
@@ -42,6 +38,10 @@ spec:
 
         transformation:
           - expression: "filter(data, {# endsWith \"main.log\"})"
+      outputs:
+        artifacts:
+          - name: file
+            path: /file
 
     - name: process-logs
       inputs:

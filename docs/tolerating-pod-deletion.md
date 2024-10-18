@@ -5,8 +5,8 @@
 In Kubernetes, pods are cattle and can be deleted at any time. Deletion could be manually via `kubectl delete pod`, during a node drain, or for other reasons.
 
 This can be very inconvenient, your workflow will error, but for reasons outside of your control.
- 
-A [pod disruption budget](examples/default-pdb-support.yaml) can reduce the likelihood of this happening. But, it cannot entirely prevent it.   
+
+A [pod disruption budget](https://raw.githubusercontent.com/argoproj/argo-workflows/main/examples/default-pdb-support.yaml) can reduce the likelihood of this happening. But, it cannot entirely prevent it.
 
 To retry pods that were deleted, set `retryStrategy.retryPolicy: OnError`.
 
@@ -29,10 +29,12 @@ spec:
   templates:
     - name: main
       container:
-        image: docker/whalesay:latest
+        image: busybox
         command:
           - sleep
-          - 30s 
+          - 30s
 ```
 
 Then execute `kubectl delete pod example`. You'll see that the errored node is automatically retried.
+
+💡 Read more on [architecting workflows for reliability](https://blog.argoproj.io/architecting-workflows-for-reliability-d33bd720c6cc).

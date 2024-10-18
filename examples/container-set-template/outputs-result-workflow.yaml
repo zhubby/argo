@@ -4,15 +4,12 @@ metadata:
   generateName: outputs-result-
   labels:
     workflows.argoproj.io/test: "true"
-    workflows.argoproj.io/container-runtime-executor: emissary
   annotations:
     workflows.argoproj.io/description: |
       This workflow demonstrates collecting outputs (specifically the stdout result) from a pod.
 
       Specifially, you must have a container named "main".
     workflows.argoproj.io/version: ">= 3.1.0"
-    workflows.argoproj.io/verify.py: |
-      assert status["phase"] == "Succeeded"
 spec:
   entrypoint: main
   templates:
@@ -27,16 +24,17 @@ spec:
               parameters:
                 - name: x
                   value: "{{tasks.a.outputs.result}}"
-            dependencies:
-              - a
+            dependencies: [ "a" ]
 
     - name: group
       containerSet:
         containers:
           - name: main
             image: python:alpine3.6
-            args:
+            command:
+              - python
               - -c
+            args:
               - |
                 print("hi")
 
@@ -46,6 +44,7 @@ spec:
           - name: x
       script:
         image: python:alpine3.6
+        command:
+          - python
         source: |
           assert "{{inputs.parameters.x}}" == "hi"
-

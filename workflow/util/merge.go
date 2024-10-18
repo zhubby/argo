@@ -16,7 +16,11 @@ func MergeTo(patch, target *wfv1.Workflow) error {
 		return nil
 	}
 
+	patchHooks := patch.Spec.Hooks
+	// Temporarily remove hooks as they don't merge
+	patch.Spec.Hooks = nil
 	patchWfBytes, err := json.Marshal(patch)
+	patch.Spec.Hooks = patchHooks
 	if err != nil {
 		return err
 	}
@@ -32,9 +36,21 @@ func MergeTo(patch, target *wfv1.Workflow) error {
 	if err != nil {
 		return err
 	}
+
+	target.Spec = wfv1.WorkflowSpec{}
 	err = json.Unmarshal(mergedWfByte, target)
 	if err != nil {
 		return err
+	}
+
+	if len(patchHooks) != 0 && target.Spec.Hooks == nil {
+		target.Spec.Hooks = make(wfv1.LifecycleHooks)
+	}
+	for name, hook := range patchHooks {
+		// If the patch hook doesn't exist in target
+		if _, ok := target.Spec.Hooks[name]; !ok {
+			target.Spec.Hooks[name] = hook
+		}
 	}
 	return nil
 }
@@ -50,10 +66,7 @@ func mergeMap(from, to map[string]string) {
 
 // JoinWorkflowMetaData will join the workflow metadata with the following order of preference
 // 1. Workflow, 2 WorkflowTemplate (WorkflowTemplateRef), 3. WorkflowDefault.
-func JoinWorkflowMetaData(wfMetaData, wftMetaData, wfDefaultMetaData *metav1.ObjectMeta) {
-	if wftMetaData != nil {
-		mergeMetaDataTo(wftMetaData, wfMetaData)
-	}
+func JoinWorkflowMetaData(wfMetaData, wfDefaultMetaData *metav1.ObjectMeta) {
 	if wfDefaultMetaData != nil {
 		mergeMetaDataTo(wfDefaultMetaData, wfMetaData)
 	}
@@ -77,6 +90,12 @@ func JoinWorkflowSpec(wfSpec, wftSpec, wfDefaultSpec *wfv1.WorkflowSpec) (*wfv1.
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// This condition will update the workflow Spec suspend value if merged value is different.
+	// This scenario will happen when Workflow with WorkflowTemplateRef has suspend template
+	if wfSpec.Suspend != targetWf.Spec.Suspend {
+		targetWf.Spec.Suspend = wfSpec.Suspend
 	}
 	return &targetWf, nil
 }

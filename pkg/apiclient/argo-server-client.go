@@ -6,6 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
 	clusterworkflowtmplpkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/clusterworkflowtemplate"
@@ -14,6 +15,7 @@ import (
 	workflowpkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflow"
 	workflowarchivepkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflowarchive"
 	workflowtemplatepkg "github.com/argoproj/argo-workflows/v3/pkg/apiclient/workflowtemplate"
+	grpcutil "github.com/argoproj/argo-workflows/v3/util/grpc"
 )
 
 const (
@@ -60,11 +62,15 @@ func (a *argoServerClient) NewInfoServiceClient() (infopkg.InfoServiceClient, er
 }
 
 func newClientConn(opts ArgoServerOpts) (*grpc.ClientConn, error) {
-	creds := grpc.WithInsecure()
+	creds := grpc.WithTransportCredentials(insecure.NewCredentials())
 	if opts.Secure {
 		creds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify}))
 	}
-	conn, err := grpc.Dial(opts.URL, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxClientGRPCMessageSize)), creds)
+	conn, err := grpc.Dial(opts.URL,
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxClientGRPCMessageSize)),
+		creds,
+		grpc.WithUnaryInterceptor(grpcutil.GetVersionHeaderClientUnaryInterceptor),
+	)
 	if err != nil {
 		return nil, err
 	}

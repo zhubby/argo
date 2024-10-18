@@ -1,7 +1,5 @@
 import {Observable, Subscription} from 'rxjs';
 
-const reconnectAfterMs = 5000;
-
 /**
  * RetryObservable allows you to watch for changes, automatically reconnecting on error.
  */
@@ -12,6 +10,7 @@ export class RetryObservable<E, V> {
     private readonly onError: (error: Error) => void;
     private subscription: Subscription;
     private timeout: any; // should be `number`
+    private reconnectAfterMs = 3000;
 
     constructor(
         watch: (v?: V) => Observable<E>,
@@ -27,20 +26,20 @@ export class RetryObservable<E, V> {
 
     public start(v?: V) {
         this.stop();
-        this.subscription = this.watch(v).subscribe(
-            next => {
+        this.subscription = this.watch(v).subscribe({
+            next: next => {
                 if (next) {
                     this.onItem(next);
                 } else {
                     this.onOpen();
                 }
             },
-            e => {
+            error: e => {
                 this.stop();
                 this.onError(e);
-                this.timeout = setTimeout(() => this.start(null), reconnectAfterMs);
+                this.reconnect();
             }
-        );
+        });
     }
 
     // Must invoke on component unload.
@@ -49,5 +48,10 @@ export class RetryObservable<E, V> {
         if (this.subscription) {
             this.subscription.unsubscribe();
         }
+    }
+
+    private reconnect() {
+        this.timeout = setTimeout(() => this.start(), this.reconnectAfterMs);
+        this.reconnectAfterMs = Math.min(this.reconnectAfterMs * 1.5, 60000);
     }
 }

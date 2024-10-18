@@ -2,34 +2,30 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: template-defaults-
-  labels:
-    workflows.argoproj.io/test: "true"
   annotations:
     workflows.argoproj.io/description: |
       Template defaults will provide the fixability to configure the defaults values for all templates in workflow.
       Individual template can be overide default values.
     workflows.argoproj.io/version: '>= 3.1.0'
-    workflows.argoproj.io/verify.py: |
-      assert status["phase"] == "Succeeded"
 spec:
   entrypoint: main
   templateDefaults:
     timeout: 30s   # timeout value will be applied to all templates
     retryStrategy: # retryStrategy value will be applied to all templates
       limit: "2"
-      
+
   templates:
     - name: main
       steps:
         - - name: retry-backoff
             template: retry-backoff
-        - - name: whalesay
-            template: whalesay
+        - - name: hello-world
+            template: hello-world
 
-    - name: whalesay
+    - name: hello-world
       container:
-        image: argoproj/argosay:v2
-        command: [cowsay]
+        image: busybox
+        command: [echo]
         args: ["hello world"]
 
     - name: retry-backoff

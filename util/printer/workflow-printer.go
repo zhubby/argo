@@ -17,7 +17,11 @@ import (
 
 func PrintWorkflows(workflows wfv1.Workflows, out io.Writer, opts PrintOpts) error {
 	if len(workflows) == 0 {
-		_, _ = fmt.Fprintln(out, "No workflows found")
+		if opts.Output == "json" || opts.Output == "yaml" {
+			_, _ = fmt.Fprintln(out, "[]")
+		} else {
+			_, _ = fmt.Fprintln(out, "No workflows found")
+		}
 		return nil
 	}
 
@@ -51,6 +55,7 @@ type PrintOpts struct {
 	NoHeaders bool
 	Namespace bool
 	Output    string
+	UID       bool
 }
 
 func printTable(wfList []wfv1.Workflow, out io.Writer, opts PrintOpts) {
@@ -59,15 +64,19 @@ func printTable(wfList []wfv1.Workflow, out io.Writer, opts PrintOpts) {
 		if opts.Namespace {
 			_, _ = fmt.Fprint(w, "NAMESPACE\t")
 		}
-		_, _ = fmt.Fprint(w, "NAME\tSTATUS\tAGE\tDURATION\tPRIORITY")
+		_, _ = fmt.Fprint(w, "NAME\tSTATUS\tAGE\tDURATION\tPRIORITY\tMESSAGE")
 		if opts.Output == "wide" {
 			_, _ = fmt.Fprint(w, "\tP/R/C\tPARAMETERS")
+		}
+		if opts.UID {
+			_, _ = fmt.Fprint(w, "\tUID")
 		}
 		_, _ = fmt.Fprint(w, "\n")
 	}
 	for _, wf := range wfList {
 		ageStr := humanize.RelativeDurationShort(wf.ObjectMeta.CreationTimestamp.Time, time.Now())
 		durationStr := humanize.RelativeDurationShort(wf.Status.StartedAt.Time, wf.Status.FinishedAt.Time)
+		messageStr := wf.Status.Message
 		if opts.Namespace {
 			_, _ = fmt.Fprintf(w, "%s\t", wf.ObjectMeta.Namespace)
 		}
@@ -75,11 +84,14 @@ func printTable(wfList []wfv1.Workflow, out io.Writer, opts PrintOpts) {
 		if wf.Spec.Priority != nil {
 			priority = int(*wf.Spec.Priority)
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d", wf.ObjectMeta.Name, WorkflowStatus(&wf), ageStr, durationStr, priority)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s", wf.ObjectMeta.Name, WorkflowStatus(&wf), ageStr, durationStr, priority, messageStr)
 		if opts.Output == "wide" {
 			pending, running, completed := countPendingRunningCompletedNodes(&wf)
 			_, _ = fmt.Fprintf(w, "\t%d/%d/%d", pending, running, completed)
 			_, _ = fmt.Fprintf(w, "\t%s", parameterString(wf.Spec.Arguments.Parameters))
+		}
+		if opts.UID {
+			_, _ = fmt.Fprintf(w, "\t%s", wf.UID)
 		}
 		_, _ = fmt.Fprintf(w, "\n")
 	}
@@ -101,16 +113,7 @@ func printCostOptimizationNudges(wfList []wfv1.Workflow, out io.Writer) {
 			_, _ = fmt.Fprintf(out, "%d completed ", completed)
 		}
 		_, _ = fmt.Fprintln(out, "workflows. Reducing the total number of workflows will reduce your costs.")
-		_, _ = fmt.Fprintln(out, "Learn more at https://argoproj.github.io/argo-workflows/cost-optimisation/")
-	}
-}
-
-// PrintSecurityNudges prints security nudges for single workflow
-func PrintSecurityNudges(wf wfv1.Workflow, out io.Writer) {
-	if wf.Spec.SecurityContext == nil {
-		_, _ = fmt.Fprintln(out, "\nThis workflow does not have security context set. "+
-			"You can run your workflow pods more securely by setting it.")
-		_, _ = fmt.Fprintln(out, "Learn more at https://argoproj.github.io/argo-workflows/workflow-pod-security-context/")
+		_, _ = fmt.Fprintln(out, "Learn more at https://argo-workflows.readthedocs.io/en/latest/cost-optimisation/")
 	}
 }
 
@@ -134,8 +137,7 @@ func countPendingRunningCompletedNodes(wf *wfv1.Workflow) (int, int, int) {
 	running := 0
 	completed := 0
 	for _, node := range wf.Status.Nodes {
-		tmpl := wf.GetTemplateByName(node.TemplateName)
-		if tmpl == nil || !tmpl.IsPodType() {
+		if node.Type != wfv1.NodeTypePod {
 			continue
 		}
 		if node.Fulfilled() {

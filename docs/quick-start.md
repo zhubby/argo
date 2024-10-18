@@ -1,42 +1,89 @@
 # Quick Start
 
-To see how Argo works, you can install it and run examples of simple workflows and workflows that use artifacts.
+To try out Argo Workflows, you can install it and run example workflows.
 
-Firstly, you'll need a Kubernetes cluster and `kubectl` set-up
+Alternatively, if you don't want to set up a Kubernetes cluster, try the [Killercoda course](training.md#hands-on).
+
+## Prerequisites
+
+Before installing Argo, you need a Kubernetes cluster and `kubectl` configured to access it.
+For quick testing, you can use a local cluster with:
+
+* [minikube](https://minikube.sigs.k8s.io/docs/)
+* [kind](https://kind.sigs.k8s.io/)
+* [k3s](https://k3s.io/) or [k3d](https://k3d.io/)
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+!!! Warning "Development vs. Production"
+    These instructions are intended to help you get started quickly. They are not suitable for production.
+    For production installs, please refer to [the installation documentation](installation.md).
 
 ## Install Argo Workflows
 
-To get started quickly, you can use the quick start manifest which will install Argo Workflow as well as some commonly used components:
+First, specify the version you want to install in an environment variable.
+Modify the command below:
 
-```sh
-kubectl create ns argo
-kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/quick-start-postgres.yaml
+```bash
+ARGO_WORKFLOWS_VERSION="vX.Y.Z"
 ```
 
-!!! note
-    On GKE, you may need to grant your account the ability to create new `clusterrole`s
+Then, copy the commands below to apply the quick-start manifest:
 
-```sh
-kubectl create clusterrolebinding YOURNAME-cluster-admin-binding --clusterrole=cluster-admin --user=YOUREMAIL@gmail.com
+```bash
+kubectl create namespace argo
+kubectl apply -n argo -f "https://github.com/argoproj/argo-workflows/releases/download/${ARGO_WORKFLOWS_VERSION}/quick-start-minimal.yaml"
 ```
 
-If you are running Argo Workflows locally (e.g. using Minikube or Docker for Desktop), open a port-forward so you can access the namespace:
+## Install the Argo Workflows CLI
 
-```sh
-kubectl -n argo port-forward deployment/argo-server 2746:2746
+You can more easily interact with Argo Workflows with the [Argo CLI](walk-through/argo-cli.md).
+
+## Submit an example workflow
+
+### Submit via the CLI
+
+```bash
+argo submit -n argo --watch https://raw.githubusercontent.com/argoproj/argo-workflows/main/examples/hello-world.yaml
 ```
 
-This will serve the user interface on https://localhost:2746
+The `--watch` flag watches the workflow as it runs and reports whether it succeeds or not.
+When the workflow completes, the watch stops.
 
-If you're using running Argo Workflows on a remote cluster (e.g. on EKS or GKE) then [follow these instructions](argo-server.md#access-the-argo-workflows-ui). 
+You can list all submitted Workflows by running the command below:
 
-Next, Download the latest Argo CLI from our [releases page](https://github.com/argoproj/argo-workflows/releases).
-
-Finally, submit an example workflow:  
-
-```sh
-argo submit -n argo --watch https://raw.githubusercontent.com/argoproj/argo-workflows/master/examples/hello-world.yaml
+```bash
 argo list -n argo
+```
+
+The Workflow name has a `hello-world-` prefix followed by random characters.
+These characters give Workflows unique names to help identify specific runs of a Workflow.
+If you submit this Workflow again, the next run will have different characters.
+
+You can review the details of a Workflow run using the `argo get` command.
+The output for the command below will be the same as the information shown when you submitted the Workflow:
+
+```bash
 argo get -n argo @latest
+```
+
+The `@latest` argument is a shortcut to view the latest Workflow run.
+
+You can observe the logs of the Workflow run with the following command:
+
+```bash
 argo logs -n argo @latest
 ```
+
+### Submit via the UI
+
+1. Forward the Server's port to access the UI:
+
+    ```bash
+    kubectl -n argo port-forward service/argo-server 2746:2746
+    ```
+
+1. Navigate your browser to <https://localhost:2746>.
+    * **Note**: The URL uses `https` and not `http`. Navigating to `http` will result in a server-side error.
+    * Due to the self-signed certificate, you will receive a TLS error which you will need to manually approve.
+1. Click `+ Submit New Workflow` and then `Edit using full workflow options`
+1. You can find an example workflow already in the text field. Press `+ Create` to start the workflow.

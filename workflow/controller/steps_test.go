@@ -3,12 +3,13 @@ package controller
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
-
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
 )
 
@@ -73,7 +74,7 @@ func TestArtifactResolutionWhenSkipped(t *testing.T) {
 	ctx := context.Background()
 	wf := wfv1.MustUnmarshalWorkflow(artifactResolutionWhenSkipped)
 	wf, err := wfcset.Create(ctx, wf, metav1.CreateOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	woc := newWorkflowOperationCtx(wf, controller)
 
 	woc.operate(ctx)
@@ -119,7 +120,7 @@ func TestStepsWithParamAndGlobalParam(t *testing.T) {
 	ctx := context.Background()
 	wf := wfv1.MustUnmarshalWorkflow(stepsWithParamAndGlobalParam)
 	wf, err := wfcset.Create(ctx, wf, metav1.CreateOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	woc := newWorkflowOperationCtx(wf, controller)
 
 	woc.operate(ctx)
@@ -135,6 +136,8 @@ func TestResourceDurationMetric(t *testing.T) {
       id: many-items-z26lj-3491220632
       name: many-items-z26lj[0].sleep(4:four)
       outputs:
+        parameters:
+        - name: pipeline_tid
         artifacts:
         - archiveLogs: true
           name: main-logs
@@ -169,22 +172,38 @@ func TestResourceDurationMetric(t *testing.T) {
 	assert.Equal(t, "0", localScope["exitCode"])
 }
 
+func TestResourceDurationMetricDefaultMetricScope(t *testing.T) {
+	wf := wfv1.Workflow{Status: wfv1.WorkflowStatus{StartedAt: metav1.NewTime(time.Now())}}
+	woc := wfOperationCtx{
+		globalParams: make(common.Parameters),
+		wf:           &wf,
+	}
+
+	localScope, realTimeScope := woc.prepareDefaultMetricScope()
+
+	assert.Equal(t, "0", localScope["resourcesDuration.cpu"])
+	assert.Equal(t, "0", localScope["resourcesDuration.memory"])
+	assert.Equal(t, "0", localScope["duration"])
+	assert.Equal(t, "Pending", localScope["status"])
+	assert.Less(t, realTimeScope["workflow.duration"](), 1.0)
+}
+
 var optionalArgumentAndParameter = `
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   name: optional-input-artifact-ctc82
 spec:
-  
+
   entrypoint: plan
   templates:
-  - 
+  -
     inputs: {}
     metadata: {}
     name: plan
     outputs: {}
     steps:
-    - - 
+    - -
         name: create-artifact
         template: artifact-creation
         when: "false"
@@ -195,7 +214,7 @@ spec:
             optional: true
         name: print-artifact
         template: artifact-printing
-  - 
+  -
     container:
       args:
       - echo 'hello' > /tmp/hello.txt
@@ -212,7 +231,7 @@ spec:
       artifacts:
       - name: hello
         path: /tmp/hello.txt
-  - 
+  -
     container:
       args:
       - echo 'goodbye'
@@ -290,7 +309,137 @@ func TestOptionalArgumentAndParameter(t *testing.T) {
 	ctx := context.Background()
 	wf := wfv1.MustUnmarshalWorkflow(optionalArgumentAndParameter)
 	wf, err := wfcset.Create(ctx, wf, metav1.CreateOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	woc := newWorkflowOperationCtx(wf, controller)
+
+	woc.operate(ctx)
+	assert.Equal(t, wfv1.WorkflowRunning, woc.wf.Status.Phase)
+}
+
+var artifactResolutionWhenOptionalAndSubpath = `
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: artifact-passing-subpath-rx7f4
+spec:
+  entrypoint: artifact-example
+  templates:
+  - name: artifact-example
+    steps:
+    - - name: hello-world-to-file
+        template: hello-world-to-file
+    - - name: hello-world-to-file2
+        template: hello-world-to-file2
+        arguments:
+          artifacts:
+          - name: bar
+            from: "{{steps.hello-world-to-file.outputs.artifacts.foo}}"
+            optional: true
+            subpath: bar.txt
+        withParam: "[0, 1]"
+
+  - name: hello-world-to-file
+    container:
+      image: busybox:latest
+      imagePullPolicy: IfNotPresent
+      command: [sh, -c]
+      args: ["sleep 1; echo hello world"]
+    outputs:
+      artifacts:
+      - name: foo
+        path: /tmp/foo
+        optional: true
+        archive:
+          none: {}
+
+  - name: hello-world-to-file2
+    inputs:
+      artifacts:
+      - name: bar
+        path: /tmp/bar.txt
+        optional: true
+        archive:
+          none: {}
+    container:
+      image: busybox:latest
+      imagePullPolicy: IfNotPresent
+      command: [sh, -c]
+      args: ["sleep 1; echo hello world"]
+status:
+  nodes:
+    artifact-passing-subpath-rx7f4:
+      children:
+      - artifact-passing-subpath-rx7f4-1763046061
+      displayName: artifact-passing-subpath-rx7f4
+      id: artifact-passing-subpath-rx7f4
+      name: artifact-passing-subpath-rx7f4
+      phase: Running
+      progress: 1/1
+      resourcesDuration:
+        cpu: 0
+        memory: 5
+      startedAt: "2024-09-06T04:53:32Z"
+      templateName: artifact-example
+      templateScope: local/artifact-passing-subpath-rx7f4
+      type: Steps
+    artifact-passing-subpath-rx7f4-511855021:
+      boundaryID: artifact-passing-subpath-rx7f4
+      children:
+      - artifact-passing-subpath-rx7f4-1696082680
+      displayName: hello-world-to-file
+      finishedAt: "2024-09-06T04:53:39Z"
+      id: artifact-passing-subpath-rx7f4-511855021
+      name: artifact-passing-subpath-rx7f4[0].hello-world-to-file
+      outputs:
+        artifacts:
+        - archive:
+            none: {}
+          name: foo
+          optional: true
+          path: /tmp/foo
+        - name: main-logs
+          s3:
+            key: artifact-passing-subpath-rx7f4/artifact-passing-subpath-rx7f4-hello-world-to-file-511855021/main.log
+        exitCode: "0"
+      phase: Succeeded
+      progress: 1/1
+      resourcesDuration:
+        cpu: 0
+        memory: 5
+      startedAt: "2024-09-06T04:53:32Z"
+      templateName: hello-world-to-file
+      templateScope: local/artifact-passing-subpath-rx7f4
+      type: Pod
+    artifact-passing-subpath-rx7f4-1763046061:
+      boundaryID: artifact-passing-subpath-rx7f4
+      children:
+      - artifact-passing-subpath-rx7f4-511855021
+      displayName: '[0]'
+      finishedAt: "2024-09-06T04:53:41Z"
+      id: artifact-passing-subpath-rx7f4-1763046061
+      name: artifact-passing-subpath-rx7f4[0]
+      nodeFlag: {}
+      phase: Succeeded
+      progress: 1/1
+      resourcesDuration:
+        cpu: 0
+        memory: 5
+      startedAt: "2024-09-06T04:53:32Z"
+      templateScope: local/artifact-passing-subpath-rx7f4
+      type: StepGroup
+  phase: Running
+  taskResultsCompletionStatus:
+    artifact-passing-subpath-rx7f4-511855021: true`
+
+func TestOptionalArgumentUseSubPathInLoop(t *testing.T) {
+	cancel, controller := newController()
+	defer cancel()
+	wfcset := controller.wfclientset.ArgoprojV1alpha1().Workflows("")
+
+	ctx := context.Background()
+	wf := wfv1.MustUnmarshalWorkflow(artifactResolutionWhenOptionalAndSubpath)
+	wf, err := wfcset.Create(ctx, wf, metav1.CreateOptions{})
+	require.NoError(t, err)
 	woc := newWorkflowOperationCtx(wf, controller)
 
 	woc.operate(ctx)

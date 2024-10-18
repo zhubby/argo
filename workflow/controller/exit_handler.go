@@ -6,58 +6,66 @@ import (
 	"fmt"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/util/expr/argoexpr"
+	"github.com/argoproj/argo-workflows/v3/util/expr/env"
 	"github.com/argoproj/argo-workflows/v3/util/template"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
 	"github.com/argoproj/argo-workflows/v3/workflow/templateresolution"
 )
 
-func (woc *wfOperationCtx) runOnExitNode(ctx context.Context, exitHook *wfv1.LifecycleHook, parentDisplayName, parentNodeName, boundaryID string, tmplCtx *templateresolution.Context, prefix string, outputs *wfv1.Outputs) (bool, *wfv1.NodeStatus, error) {
-	if exitHook != nil && woc.GetShutdownStrategy().ShouldExecute(true) {
-		woc.log.WithField("lifeCycleHook", exitHook).Infof("Running OnExit handler")
+func (woc *wfOperationCtx) runOnExitNode(ctx context.Context, exitHook *wfv1.LifecycleHook, parentNode *wfv1.NodeStatus, boundaryID string, tmplCtx *templateresolution.Context, prefix string, scope *wfScope) (bool, *wfv1.NodeStatus, error) {
+	outputs := parentNode.Outputs
+	if lastChildNode := woc.possiblyGetRetryChildNode(parentNode); lastChildNode != nil {
+		outputs = lastChildNode.Outputs
+	}
 
-		// Previously we used `parentDisplayName` to generate all onExit node names. However, as these can be non-unique
-		// we transitioned to using `parentNodeName` instead, which are guaranteed to be unique. In order to not disrupt
-		// running workflows during upgrade time, we first check if there is an onExit node that currently exists with the
-		// legacy name AND said node is a child of the parent node. If it does, we continue execution with the legacy name.
-		// If it doesn't, we use the new (and unique) name for all operations henceforth.
-		// TODO: This scaffold code should be removed after a couple of "grace period" version upgrades to allow transitions. It was introduced in v3.0.0
-		// When the scaffold code is removed, we should only have the following:
-		//
-		// 		onExitNodeName := common.GenerateOnExitNodeName(parentNodeName)
-		//
-		// See more: https://github.com/argoproj/argo-workflows/issues/5502
-		onExitNodeName := common.GenerateOnExitNodeName(parentNodeName)
-		legacyOnExitNodeName := common.GenerateOnExitNodeName(parentDisplayName)
-		if legacyNameNode := woc.wf.GetNodeByName(legacyOnExitNodeName); legacyNameNode != nil && woc.wf.GetNodeByName(parentNodeName).HasChild(legacyNameNode.ID) {
-			onExitNodeName = legacyOnExitNodeName
-		}
-		resolvedArgs := exitHook.Arguments
+	if exitHook != nil && woc.GetShutdownStrategy().ShouldExecute(true) {
+		execute := true
 		var err error
-		if !resolvedArgs.IsEmpty() && outputs != nil {
-			resolvedArgs, err = woc.resolveExitTmplArgument(exitHook.Arguments, prefix, outputs)
+		if exitHook.Expression != "" {
+			execute, err = argoexpr.EvalBool(exitHook.Expression, env.GetFuncMap(template.EnvMap(woc.globalParams.Merge(scope.getParameters()))))
 			if err != nil {
 				return true, nil, err
 			}
-
 		}
-		onExitNode, err := woc.executeTemplate(ctx, onExitNodeName, &wfv1.WorkflowStep{Template: exitHook.Template}, tmplCtx, resolvedArgs, &executeTemplateOpts{
+		if execute {
+			woc.log.WithField("lifeCycleHook", exitHook).Infof("Running OnExit handler")
+			onExitNodeName := common.GenerateOnExitNodeName(parentNode.Name)
+			resolvedArgs := exitHook.Arguments
+			if !resolvedArgs.IsEmpty() {
+				resolvedArgs, err = woc.resolveExitTmplArgument(exitHook.Arguments, prefix, outputs, scope)
+				if err != nil {
+					return true, nil, err
+				}
 
-			boundaryID:     boundaryID,
-			onExitTemplate: true,
-		})
-		woc.addChildNode(parentNodeName, onExitNodeName)
-		return true, onExitNode, err
+			}
+			onExitNode, err := woc.executeTemplate(ctx, onExitNodeName, &wfv1.WorkflowStep{Template: exitHook.Template, TemplateRef: exitHook.TemplateRef}, tmplCtx, resolvedArgs, &executeTemplateOpts{
+				boundaryID:     boundaryID,
+				onExitTemplate: true,
+				nodeFlag:       &wfv1.NodeFlag{Hooked: true},
+			})
+			woc.addChildNode(parentNode.Name, onExitNodeName)
+			return true, onExitNode, err
+		}
 	}
 	return false, nil, nil
 }
 
-func (woc *wfOperationCtx) resolveExitTmplArgument(args wfv1.Arguments, prefix string, outputs *wfv1.Outputs) (wfv1.Arguments, error) {
-	scope := createScope(nil)
-	for _, param := range outputs.Parameters {
-		scope.addParamToScope(fmt.Sprintf("%s.outputs.parameters.%s", prefix, param.Name), param.Value.String())
+func (woc *wfOperationCtx) resolveExitTmplArgument(args wfv1.Arguments, prefix string, outputs *wfv1.Outputs, scope *wfScope) (wfv1.Arguments, error) {
+	if scope == nil {
+		scope = createScope(nil)
 	}
-	for _, arts := range outputs.Artifacts {
-		scope.addArtifactToScope(fmt.Sprintf("%s.outputs.artifacts.%s", prefix, arts.Name), arts)
+	if outputs != nil {
+		for _, param := range outputs.Parameters {
+			value := ""
+			if param.Value != nil {
+				value = param.Value.String()
+			}
+			scope.addParamToScope(fmt.Sprintf("%s.outputs.parameters.%s", prefix, param.Name), value)
+		}
+		for _, arts := range outputs.Artifacts {
+			scope.addArtifactToScope(fmt.Sprintf("%s.outputs.artifacts.%s", prefix, arts.Name), arts)
+		}
 	}
 
 	stepBytes, err := json.Marshal(args)

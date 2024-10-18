@@ -1,29 +1,36 @@
 package executor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
-	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/itchyny/gojq"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/gengo/namer"
+	gengotypes "k8s.io/gengo/types"
+	kubectlcmd "k8s.io/kubectl/pkg/cmd"
+	kubectlutil "k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/yaml"
 
 	"github.com/argoproj/argo-workflows/v3/errors"
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
-	"github.com/argoproj/argo-workflows/v3/util"
 	envutil "github.com/argoproj/argo-workflows/v3/util/env"
 	argoerr "github.com/argoproj/argo-workflows/v3/util/errors"
-	os_specific "github.com/argoproj/argo-workflows/v3/workflow/executor/os-specific"
 )
 
 // ExecResource will run kubectl action against a manifest
@@ -33,14 +40,23 @@ func (we *WorkflowExecutor) ExecResource(action string, manifestPath string, fla
 		return "", "", "", err
 	}
 
-	cmd := exec.Command("kubectl", args...)
-	log.Info(strings.Join(cmd.Args, " "))
-
-	out, err := cmd.Output()
+	var out []byte
+	err = retry.OnError(retry.DefaultBackoff, argoerr.IsTransientErr, func() error {
+		out, err = runKubectl(args...)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		exErr := err.(*exec.ExitError)
-		errMsg := strings.TrimSpace(string(exErr.Stderr))
-		return "", "", "", errors.New(errors.CodeBadRequest, errMsg)
+		if exErr, ok := err.(*exec.ExitError); ok {
+			errMsg := strings.TrimSpace(string(exErr.Stderr))
+			err = errors.Wrap(err, errors.CodeBadRequest, errMsg)
+		} else {
+			err = errors.Wrap(err, errors.CodeBadRequest, err.Error())
+		}
+		err = errors.Wrap(err, errors.CodeBadRequest, "no more retries "+err.Error())
+		return "", "", "", err
 	}
 	if action == "delete" {
 		return "", "", "", nil
@@ -59,14 +75,40 @@ func (we *WorkflowExecutor) ExecResource(action string, manifestPath string, fla
 	if resourceName == "" || resourceKind == "" {
 		return "", "", "", errors.New(errors.CodeBadRequest, "Kind and name are both required but at least one of them is missing from the manifest")
 	}
-	resourceFullName := fmt.Sprintf("%s.%s/%s", resourceKind, resourceGroup, resourceName)
-	selfLink := obj.GetSelfLink()
+	resourceFullName := fmt.Sprintf("%s.%s/%s", strings.ToLower(resourceKind), resourceGroup, resourceName)
+	selfLink := inferObjectSelfLink(obj)
 	log.Infof("Resource: %s/%s. SelfLink: %s", obj.GetNamespace(), resourceFullName, selfLink)
 	return obj.GetNamespace(), resourceFullName, selfLink, nil
 }
 
+func inferObjectSelfLink(obj unstructured.Unstructured) string {
+	gvk := obj.GroupVersionKind()
+	// This is the best guess we can do here and is what `kubectl` uses under the hood. Hopefully future versions of the
+	// REST client would remove the need to infer the plural name.
+	lowercaseNamer := namer.NewAllLowercasePluralNamer(map[string]string{})
+	pluralName := lowercaseNamer.Name(&gengotypes.Type{Name: gengotypes.Name{
+		Name: gvk.Kind,
+	}})
+
+	var selfLinkPrefix string
+	if gvk.Group == "" {
+		selfLinkPrefix = "api"
+	} else {
+		selfLinkPrefix = "apis"
+	}
+	// We cannot use `obj.GetSelfLink()` directly since it is deprecated and will be removed after Kubernetes 1.21: https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/1164-remove-selflink
+	var selfLink string
+	if obj.GetNamespace() == "" {
+		selfLink = fmt.Sprintf("%s/%s/%s/%s", selfLinkPrefix, obj.GetAPIVersion(), pluralName, obj.GetName())
+	} else {
+		selfLink = fmt.Sprintf("%s/%s/namespaces/%s/%s/%s",
+			selfLinkPrefix, obj.GetAPIVersion(), obj.GetNamespace(), pluralName, obj.GetName())
+	}
+	return selfLink
+}
+
 func (we *WorkflowExecutor) getKubectlArguments(action string, manifestPath string, flags []string) ([]string, error) {
-	buff, err := ioutil.ReadFile(manifestPath)
+	buff, err := os.ReadFile(filepath.Clean(manifestPath))
 	if err != nil {
 		return []string{}, errors.New(errors.CodeBadRequest, err.Error())
 	}
@@ -75,6 +117,7 @@ func (we *WorkflowExecutor) getKubectlArguments(action string, manifestPath stri
 	}
 
 	args := []string{
+		"kubectl",
 		action,
 	}
 	output := "json"
@@ -84,27 +127,40 @@ func (we *WorkflowExecutor) getKubectlArguments(action string, manifestPath stri
 		output = "name"
 	}
 
+	appendFileFlag := true
 	if action == "patch" {
 		mergeStrategy := "strategic"
 		if we.Template.Resource.MergeStrategy != "" {
 			mergeStrategy = we.Template.Resource.MergeStrategy
 		}
-
 		args = append(args, "--type")
 		args = append(args, mergeStrategy)
 
-		args = append(args, "-p")
-		args = append(args, string(buff))
+		args = append(args, "--patch-file")
+		args = append(args, manifestPath)
+
+		// if there are flags and the manifest has no `kind`, assume: `kubectl patch <kind> <name> --patch-file <path>`
+		// json patches also use patch files by definition and so require resource arguments
+		// the other form in our case is `kubectl patch -f <path> --patch-file <path>`
+		if mergeStrategy == "json" {
+			appendFileFlag = false
+		} else {
+			var obj map[string]interface{}
+			err = yaml.Unmarshal(buff, &obj)
+			if err != nil {
+				return []string{}, errors.New(errors.CodeBadRequest, err.Error())
+			}
+			if len(flags) != 0 && obj["kind"] == nil {
+				appendFileFlag = false
+			}
+		}
 	}
 
 	if len(flags) != 0 {
 		args = append(args, flags...)
 	}
 
-	// Action "patch" require flag "-p" with resource arguments.
-	// But kubectl disallow specify both "-f" flag and resource arguments.
-	// Flag "-f" should be excluded for action "patch" here.
-	if len(buff) != 0 && action != "patch" {
+	if len(buff) != 0 && appendFileFlag {
 		args = append(args, "-f")
 		args = append(args, manifestPath)
 	}
@@ -131,28 +187,8 @@ func (g gjsonLabels) Get(label string) string {
 	return gjson.GetBytes(g.json, label).String()
 }
 
-// signalMonitoring start the goroutine which listens for a SIGUSR2.
-// Upon receiving of the signal, We update the pod annotation and exit the process.
-func (we *WorkflowExecutor) signalMonitoring() {
-	log.Infof("Starting SIGUSR2 signal monitor")
-	sigs := make(chan os.Signal, 1)
-
-	signal.Notify(sigs, os_specific.GetOsSignal())
-	go func() {
-		for {
-			<-sigs
-			log.Infof("Received SIGUSR2 signal. Process is terminated")
-			util.WriteTeriminateMessage("Received user signal to terminate the workflow")
-			os.Exit(130)
-		}
-	}()
-}
-
 // WaitResource waits for a specific resource to satisfy either the success or failure condition
 func (we *WorkflowExecutor) WaitResource(ctx context.Context, resourceNamespace, resourceName, selfLink string) error {
-	// Monitor the SIGTERM
-	we.signalMonitoring()
-
 	if we.Template.Resource.SuccessCondition == "" && we.Template.Resource.FailureCondition == "" {
 		return nil
 	}
@@ -175,14 +211,15 @@ func (we *WorkflowExecutor) WaitResource(ctx context.Context, resourceNamespace,
 		log.Infof("Failing for conditions: %s", failSelector)
 		failReqs, _ = failSelector.Requirements()
 	}
-	err := wait.PollImmediateInfinite(envutil.LookupEnvDurationOr("RESOURCE_STATE_CHECK_INTERVAL", time.Second*5),
-		func() (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, envutil.LookupEnvDurationOr("RESOURCE_STATE_CHECK_INTERVAL", time.Second*5),
+		true,
+		func(ctx context.Context) (bool, error) {
 			isErrRetryable, err := we.checkResourceState(ctx, selfLink, successReqs, failReqs)
 			if err == nil {
 				log.Infof("Returning from successful wait for resource %s in namespace %s", resourceName, resourceNamespace)
 				return true, nil
 			}
-			if isErrRetryable {
+			if isErrRetryable || argoerr.IsTransientErr(err) {
 				log.Infof("Waiting for resource %s in namespace %s resulted in retryable error: %v", resourceName, resourceNamespace, err)
 				return false, nil
 			}
@@ -191,7 +228,7 @@ func (we *WorkflowExecutor) WaitResource(ctx context.Context, resourceNamespace,
 			return false, err
 		})
 	if err != nil {
-		if err == wait.ErrWaitTimeout {
+		if wait.Interrupted(err) {
 			log.Warnf("Waiting for resource %s resulted in timeout due to repeated errors", resourceName)
 		} else {
 			log.Warnf("Waiting for resource %s resulted in error %v", resourceName, err)
@@ -207,9 +244,6 @@ func (we *WorkflowExecutor) checkResourceState(ctx context.Context, selfLink str
 	request := we.RESTClient.Get().RequestURI(selfLink)
 	stream, err := request.Stream(ctx)
 
-	if argoerr.IsTransientErr(err) {
-		return true, errors.Errorf(errors.CodeNotFound, "The error is detected to be transient: %v. Retrying...", err)
-	}
 	if err != nil {
 		err = errors.Cause(err)
 		if apierr.IsNotFound(err) {
@@ -219,12 +253,12 @@ func (we *WorkflowExecutor) checkResourceState(ctx context.Context, selfLink str
 	}
 
 	defer func() { _ = stream.Close() }()
-	jsonBytes, err := ioutil.ReadAll(stream)
+	jsonBytes, err := io.ReadAll(stream)
 	if err != nil {
 		return false, err
 	}
 	jsonString := string(jsonBytes)
-	log.Info(jsonString)
+	log.Debug(jsonString)
 	if !gjson.Valid(jsonString) {
 		return false, errors.Errorf(errors.CodeNotFound, "Encountered invalid JSON response when checking resource status. Will not be retried: %q", jsonString)
 	}
@@ -237,10 +271,10 @@ func matchConditions(jsonBytes []byte, successReqs labels.Requirements, failReqs
 	for _, req := range failReqs {
 		failed := req.Matches(ls)
 		msg := fmt.Sprintf("failure condition '%s' evaluated %v", req, failed)
-		log.Infof(msg)
+		log.Info(msg)
 		if failed {
 			// We return false here to not retry when failure conditions met.
-			return false, errors.Errorf(errors.CodeBadRequest, msg)
+			return false, errors.Errorf(errors.CodeBadRequest, "%s", msg)
 		}
 	}
 	numMatched := 0
@@ -278,40 +312,98 @@ func (we *WorkflowExecutor) SaveResourceParameters(ctx context.Context, resource
 			we.Template.Outputs.Parameters[i].Value = wfv1.AnyStringPtr(output)
 			continue
 		}
-		var cmd *exec.Cmd
+		outputFormat := ""
 		if param.ValueFrom.JSONPath != "" {
-			args := []string{"get", resourceName, "-o", fmt.Sprintf("jsonpath=%s", param.ValueFrom.JSONPath)}
-			if resourceNamespace != "" {
-				args = append(args, "-n", resourceNamespace)
-			}
-			cmd = exec.Command("kubectl", args...)
+			outputFormat = fmt.Sprintf("jsonpath=%s", param.ValueFrom.JSONPath)
 		} else if param.ValueFrom.JQFilter != "" {
-			resArgs := []string{resourceName}
-			if resourceNamespace != "" {
-				resArgs = append(resArgs, "-n", resourceNamespace)
-			}
-			cmdStr := fmt.Sprintf("kubectl get %s -o json | jq -rc '%s'", strings.Join(resArgs, " "), param.ValueFrom.JQFilter)
-			cmd = exec.Command("sh", "-c", cmdStr)
+			outputFormat = "json"
 		} else {
 			continue
 		}
-		log.Info(cmd.Args)
-		out, err := cmd.Output()
+		args := []string{"kubectl", "-n", resourceNamespace, "get", resourceName, "-o", outputFormat}
+		out, err := runKubectl(args...)
+		log.WithError(err).WithField("out", string(out)).WithField("args", args).Info("kubectl")
 		if err != nil {
-			// We have a default value to use instead of returning an error
-			if param.ValueFrom.Default != nil {
-				out = []byte(param.ValueFrom.Default.String())
-			} else {
-				if exErr, ok := err.(*exec.ExitError); ok {
-					log.Errorf("`%s` stderr:\n%s", cmd.Args, string(exErr.Stderr))
-				}
-				return errors.InternalWrapError(err)
-			}
+			return err
 		}
 		output := string(out)
+		if param.ValueFrom.JQFilter != "" {
+			output, err = jqFilter(ctx, out, param.ValueFrom.JQFilter)
+			log.WithError(err).WithField("out", string(out)).WithField("filter", param.ValueFrom.JQFilter).Info("gojq")
+			if err != nil {
+				return err
+			}
+		}
+
 		we.Template.Outputs.Parameters[i].Value = wfv1.AnyStringPtr(output)
 		log.Infof("Saved output parameter: %s, value: %s", param.Name, output)
 	}
-	err := we.AnnotateOutputs(ctx, nil)
+	err := we.ReportOutputs(ctx, nil)
 	return err
+}
+
+func jqFilter(ctx context.Context, input []byte, filter string) (string, error) {
+	var v interface{}
+	if err := json.Unmarshal(input, &v); err != nil {
+		return "", err
+	}
+	q, err := gojq.Parse(filter)
+	if err != nil {
+		return "", err
+	}
+	iter := q.RunWithContext(ctx, v)
+	var buf strings.Builder
+	for {
+		v, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if err, ok := v.(error); ok {
+			return "", err
+		}
+		if s, ok := v.(string); ok {
+			buf.WriteString(s)
+		} else {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return "", err
+			}
+			buf.Write(b)
+		}
+		buf.WriteString("\n")
+	}
+	return strings.TrimSpace(buf.String()), nil
+}
+
+func runKubectl(args ...string) ([]byte, error) {
+	log.Info(strings.Join(args, " "))
+	osArgs := append([]string{}, os.Args...)
+	os.Args = args
+	defer func() {
+		os.Args = osArgs
+	}()
+
+	var fatalErr error
+	// catch `os.Exit(1)` from kubectl
+	kubectlutil.BehaviorOnFatal(func(msg string, code int) {
+		fatalErr = errors.New(fmt.Sprint(code), msg)
+	})
+
+	var buf bytes.Buffer
+	if err := kubectlcmd.NewKubectlCommand(kubectlcmd.KubectlOptions{
+		Arguments: args,
+		// TODO(vadasambar): use `DefaultConfigFlags` variable from upstream
+		// as value for `ConfigFlags` once https://github.com/kubernetes/kubernetes/pull/120024 is merged
+		ConfigFlags: genericclioptions.NewConfigFlags(true).
+			WithDeprecatedPasswordFlag().
+			WithDiscoveryBurst(300).
+			WithDiscoveryQPS(50.0),
+		IOStreams: genericclioptions.IOStreams{Out: &buf, ErrOut: os.Stderr},
+	}).Execute(); err != nil {
+		return nil, err
+	}
+	if fatalErr != nil {
+		return nil, fatalErr
+	}
+	return buf.Bytes(), nil
 }

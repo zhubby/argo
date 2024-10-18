@@ -1,12 +1,15 @@
 export const genres = {
-    Pod: true,
+    Artifact: true,
+    Collapsed: true,
     Container: true,
-    Steps: true,
     DAG: true,
+    HTTP: true,
+    Pod: true,
+    Plugin: true,
     Retry: true,
     Skipped: true,
-    Suspend: true,
-    TaskGroup: false,
     StepGroup: false,
-    Collapsed: true
+    Steps: true,
+    Suspend: true,
+    TaskGroup: false
 };

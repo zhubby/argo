@@ -3,20 +3,26 @@ package env
 import (
 	"encoding/json"
 
-	"github.com/Masterminds/sprig"
+	sprig "github.com/Masterminds/sprig/v3"
 	exprpkg "github.com/argoproj/pkg/expr"
-	"github.com/doublerebel/bellows"
+
+	"github.com/argoproj/argo-workflows/v3/util/expand"
 )
 
+var sprigFuncMap = sprig.GenericFuncMap() // a singleton for better performance
+
+func init() {
+	delete(sprigFuncMap, "env")
+	delete(sprigFuncMap, "expandenv")
+}
+
 func GetFuncMap(m map[string]interface{}) map[string]interface{} {
-	env := bellows.Expand(m)
+	env := expand.Expand(m)
 	for k, v := range exprpkg.GetExprEnvFunctionMap() {
 		env[k] = v
 	}
-	delete(env, "env")
-	delete(env, "expandenv")
 	env["toJson"] = toJson
-	env["sprig"] = sprig.GenericFuncMap()
+	env["sprig"] = sprigFuncMap
 	return env
 }
 

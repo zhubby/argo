@@ -15,8 +15,12 @@ var _ cache.SharedIndexInformer = &SharedIndexInformer{}
 func NewSharedIndexInformer() *SharedIndexInformer {
 	return &SharedIndexInformer{Indexer: NewIndexer()}
 }
-func (s *SharedIndexInformer) AddEventHandler(cache.ResourceEventHandler) {}
-func (s *SharedIndexInformer) AddEventHandlerWithResyncPeriod(cache.ResourceEventHandler, time.Duration) {
+
+func (s *SharedIndexInformer) AddEventHandler(cache.ResourceEventHandler) (cache.ResourceEventHandlerRegistration, error) {
+	return nil, nil
+}
+func (s *SharedIndexInformer) AddEventHandlerWithResyncPeriod(cache.ResourceEventHandler, time.Duration) (cache.ResourceEventHandlerRegistration, error) {
+	return nil, nil
 }
 func (s *SharedIndexInformer) GetStore() cache.Store                                      { return s.Indexer }
 func (s *SharedIndexInformer) GetController() cache.Controller                            { panic("implement me") }
@@ -26,3 +30,8 @@ func (s *SharedIndexInformer) LastSyncResourceVersion() string                  
 func (s *SharedIndexInformer) AddIndexers(cache.Indexers) error                           { return nil }
 func (s *SharedIndexInformer) GetIndexer() cache.Indexer                                  { return s.Indexer }
 func (s *SharedIndexInformer) SetWatchErrorHandler(handler cache.WatchErrorHandler) error { return nil }
+func (s *SharedIndexInformer) SetTransform(handler cache.TransformFunc) error             { return nil }
+func (s *SharedIndexInformer) RemoveEventHandler(cache.ResourceEventHandlerRegistration) error {
+	return nil
+}
+func (s *SharedIndexInformer) IsStopped() bool { return false }

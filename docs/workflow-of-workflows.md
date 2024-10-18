@@ -3,10 +3,13 @@
 > v2.9 and after
 
 ## Introduction
-The Workflow of Workflows pattern involves a parent workflow triggering one or more child workflows, managing them, and acting their results.
- 
+
+The Workflow of Workflows pattern involves a parent workflow triggering one or more child workflows, managing them, and acting on their results.
+
 ## Examples
-You can use `workflowTemplateRef` to trigger a workflow inline.  
+
+You can use `workflowTemplateRef` to trigger a workflow inline.
+
 1. Define your workflow as a `workflowtemplate`.
 
 ```yaml
@@ -15,26 +18,28 @@ kind: WorkflowTemplate
 metadata:
   name: workflow-template-submittable
 spec:
-  entrypoint: whalesay-template
+  entrypoint: print-message
   arguments:
     parameters:
       - name: message
         value: hello world
   templates:
-    - name: whalesay-template
+    - name: print-message
       inputs:
         parameters:
           - name: message
       container:
-        image: docker/whalesay
-        command: [cowsay]
+        image: busybox
+        command: [echo]
         args: ["{{inputs.parameters.message}}"]
 ```
-2. Create the `Workflowtemplate` in cluster using `argo template create <yaml>`
-3. Define the workflow of workflows. 
+
+1. Create the `Workflowtemplate` in cluster using `argo template create <yaml>`
+2. Define the workflow of workflows.
+
 ```yaml
 # This template demonstrates a workflow of workflows.
-# Workflow triggers one or more workflow and manage it.
+# Workflow triggers one or more workflows and manages them.
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -45,13 +50,13 @@ spec:
     - name: main
       steps:
         - - name: workflow1
-            template: triggerWorkflowUsingResourceWithoutArgument
+            template: resource-without-argument
             arguments:
               parameters:
               - name: workflowtemplate
                 value: "workflow-template-submittable"
         - - name: workflow2
-            template: triggerWorkflowUsingResourceWithArgument
+            template: resource-with-argument
             arguments:
               parameters:
               - name: workflowtemplate
@@ -59,7 +64,7 @@ spec:
               - name: message
                 value: "Welcome Argo"
 
-    - name: triggerWorkflowUsingResourceWithoutArgument
+    - name: resource-without-argument
       inputs:
         parameters:
           - name: workflowtemplate
@@ -76,7 +81,7 @@ spec:
         successCondition: status.phase == Succeeded
         failureCondition: status.phase in (Failed, Error)
 
-    - name: triggerWorkflowUsingResourceWithArgument
+    - name: resource-with-argument
       inputs:
         parameters:
           - name: workflowtemplate

@@ -4,6 +4,8 @@ export const labels = {
     clusterWorkflowTemplate: 'workflows.argoproj.io/cluster-workflow-template',
     completed: 'workflows.argoproj.io/completed',
     creator: 'workflows.argoproj.io/creator',
+    creatorEmail: 'workflows.argoproj.io/creator-email',
+    creatorPreferredUsername: 'workflows.argoproj.io/creator-preferred-username',
     cronWorkflow: 'workflows.argoproj.io/cron-workflow',
     workflowTemplate: 'workflows.argoproj.io/workflow-template'
 };
@@ -20,6 +22,93 @@ export interface Arguments {
      * Parameters is the list of parameters to pass to the template or workflow
      */
     parameters?: Parameter[];
+}
+
+export interface AzureArtifactRepository {
+    endpoint: string;
+    container: string;
+    blob: string;
+}
+export interface GCSArtifactRepository {
+    endpoint: string;
+    bucket: string;
+    key: string;
+}
+export interface S3ArtifactRepository {
+    endpoint: string;
+    bucket: string;
+    key: string;
+}
+
+export interface OSSArtifactRepository {
+    endpoint: string;
+    bucket: string;
+    key: string;
+}
+
+export interface GitArtifactRepository {
+    repo?: string;
+    endpoint?: string;
+    bucket?: string;
+}
+
+export interface HTTPArtifactRepository {
+    url: string;
+}
+
+export interface RawArtifactRepository {
+    data: string;
+}
+
+export interface ArtifactRepository {
+    gcs?: GCSArtifactRepository;
+    s3?: S3ArtifactRepository;
+    oss?: OSSArtifactRepository;
+    azure?: AzureArtifactRepository;
+    git?: GitArtifactRepository;
+    http?: HTTPArtifactRepository;
+    raw?: RawArtifactRepository;
+}
+export interface ArtifactRepositoryRefStatus {
+    artifactRepository: ArtifactRepository;
+}
+
+export interface AzureArtifact {
+    endpoint?: string;
+    container?: string;
+    blob?: string;
+}
+
+export interface GCSArtifact {
+    endpoint?: string;
+    bucket?: string;
+    key: string;
+}
+
+export interface GitArtifact {
+    repo: string;
+    branch?: string;
+    revision?: string;
+}
+
+export interface HTTPArtifact {
+    url: string;
+}
+
+export interface OSSArtifact {
+    endpoint?: string;
+    bucket?: string;
+    key: string;
+}
+
+export interface RawArtifact {
+    data: string;
+}
+
+export interface S3Artifact {
+    endpoint?: string;
+    bucket?: string;
+    key: string;
 }
 
 /**
@@ -42,6 +131,20 @@ export interface Artifact {
      * Path is the container path to the artifact
      */
     path?: string;
+    gcs?: GCSArtifact;
+    git?: GitArtifact;
+    http?: HTTPArtifact;
+    oss?: OSSArtifact;
+    raw?: RawArtifact;
+    s3?: S3Artifact;
+    azure?: AzureArtifact;
+    archive?: {
+        none?: {};
+    };
+    artifactGC?: {
+        strategy?: 'OnWorkflowCompletion' | 'OnWorkflowDeletion';
+    };
+    deleted?: boolean;
 }
 
 /**
@@ -87,7 +190,7 @@ export interface Parameter {
     /**
      * Default is the default value to use for an input parameter if a value was not supplied
      */
-    _default?: string;
+    default?: string;
     /**
      * Name is the parameter name
      */
@@ -104,6 +207,10 @@ export interface Parameter {
      * Enum holds a list of string values to choose from, for the actual value of the parameter
      */
     enum?: Array<string>;
+    /**
+     * Description is the parameter description
+     */
+    description?: string;
 }
 
 /**
@@ -157,9 +264,9 @@ export interface Script {
 }
 
 /**
- * Sidecar is a container which runs alongside the main container
+ * UserContainer is a container specified by a user.
  */
-export interface Sidecar {
+export interface UserContainer {
     /**
      * Arguments to the entrypoint. The docker image's CMD is used if this is not provided.
      * Variable references $(VAR_NAME) are expanded using the container's environment.
@@ -319,7 +426,7 @@ export interface Template {
         containers: ContainerNode[];
     };
     /**
-     * Deamon will allow a workflow to proceed to the next step so long as the container reaches readiness
+     * Daemon will allow a workflow to proceed to the next step so long as the container reaches readiness
      */
     daemon?: boolean;
     /**
@@ -353,7 +460,16 @@ export interface Template {
     /**
      * Sidecars is a list of containers which run alongside the main container Sidecars are automatically killed when the main container completes
      */
-    sidecars?: Sidecar[];
+    sidecars?: UserContainer[];
+    /**
+     * archiveLocation is the location in which all files related to the step will be stored (logs, artifacts, etc...).
+     * Can be overridden by individual items in outputs. If omitted, will use the default
+     */
+    archiveLocation?: ArtifactRepository;
+    /**
+     * InitContainers is a list of containers which run before the main container.
+     */
+    initContainers?: UserContainer[];
     /**
      * Steps define a series of sequential/parallel workflow steps
      */
@@ -422,6 +538,26 @@ export interface Workflow {
 }
 
 export const execSpec = (w: Workflow) => Object.assign({}, w.status.storedWorkflowTemplateSpec, w.spec);
+
+export const archivalStatus = 'workflows.argoproj.io/workflow-archiving-status';
+
+export function isWorkflowInCluster(wf: Workflow): boolean {
+    if (!wf) {
+        return false;
+    }
+
+    const labelValue = wf.metadata?.labels?.[archivalStatus];
+    return !labelValue || labelValue === 'Pending' || labelValue === 'Archived';
+}
+
+export function isArchivedWorkflow(wf?: Workflow): boolean {
+    if (!wf) {
+        return false;
+    }
+
+    const labelValue = wf.metadata?.labels?.[archivalStatus];
+    return labelValue === 'Archived' || labelValue === 'Persisted';
+}
 
 export type NodeType = 'Pod' | 'Container' | 'Steps' | 'StepGroup' | 'DAG' | 'Retry' | 'Skipped' | 'TaskGroup' | 'Suspend';
 
@@ -580,7 +716,7 @@ export interface WorkflowStatus {
     /**
      * Phase a simple, high-level summary of where the workflow is in its lifecycle.
      */
-    phase: NodePhase;
+    phase: WorkflowPhase;
     startedAt: kubernetes.Time;
     finishedAt: kubernetes.Time;
     /**
@@ -629,6 +765,8 @@ export interface WorkflowStatus {
      * StoredWorkflowTemplateSpec is a Workflow Spec of top level WorkflowTemplate.
      */
     storedWorkflowTemplateSpec?: WorkflowSpec;
+
+    artifactRepositoryRef?: ArtifactRepositoryRefStatus;
 }
 
 export interface Condition {
@@ -637,7 +775,7 @@ export interface Condition {
     message: string;
 }
 
-export type ConditionType = 'Completed' | 'SpecWarning' | 'MetricsError' | 'SubmissionError' | 'SpecError';
+export type ConditionType = 'Completed' | 'SpecWarning' | 'MetricsError' | 'SubmissionError' | 'SpecError' | 'ArtifactGCError';
 export type ConditionStatus = 'True' | 'False' | 'Unknown';
 
 /**
@@ -668,6 +806,11 @@ export interface WorkflowSpec {
      * terminate a Running workflow
      */
     activeDeadlineSeconds?: number;
+
+    artifactGC?: {
+        strategy?: 'OnWorkflowCompletion' | 'OnWorkflowDeletion';
+    };
+
     /**
      * TTLStrategy limits the lifetime of a Workflow that has finished execution depending on if it
      * Succeeded or Failed. If this struct is set, once the Workflow finishes, it will be
@@ -684,6 +827,7 @@ export interface WorkflowSpec {
      */
     podGC?: {
         strategy?: string;
+        deleteDelayDuration?: string;
     };
     /**
      * SecurityContext holds pod-level security attributes and common container settings.
@@ -890,6 +1034,6 @@ export function getColorForNodePhase(p: NodePhase) {
 export type ResourceScope = 'local' | 'namespaced' | 'cluster';
 
 export interface LogEntry {
-    content: string;
+    content?: string;
     podName?: string;
 }

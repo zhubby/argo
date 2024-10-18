@@ -2,9 +2,13 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/yaml"
 )
 
@@ -15,6 +19,37 @@ func validateContainerSetTemplate(yamlStr string) error {
 		panic(err)
 	}
 	return cst.Validate()
+}
+
+func TestContainerSetGetRetryStrategy(t *testing.T) {
+	t.Run("RetriesOnly", func(t *testing.T) {
+		retries := intstr.FromInt(100)
+		set := ContainerSetTemplate{
+			RetryStrategy: &ContainerSetRetryStrategy{
+				Retries: &retries,
+			},
+		}
+		strategy, err := set.GetRetryStrategy()
+		require.NoError(t, err)
+		assert.Equal(t, wait.Backoff{Steps: 100}, strategy)
+	})
+
+	t.Run("DurationSet", func(t *testing.T) {
+		retries := intstr.FromInt(100)
+		duration := "20s"
+		set := &ContainerSetTemplate{
+			RetryStrategy: &ContainerSetRetryStrategy{
+				Retries:  &retries,
+				Duration: duration,
+			},
+		}
+		strategy, err := set.GetRetryStrategy()
+		require.NoError(t, err)
+		assert.Equal(t, wait.Backoff{
+			Steps:    100,
+			Duration: time.Duration(20 * time.Second),
+		}, strategy)
+	})
 }
 
 func TestContainerSetTemplate(t *testing.T) {
@@ -52,9 +87,7 @@ volumeMounts:
     mountPath: /workspace
 `
 	err := validateContainerSetTemplate(invalidContainerSetEmpty)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "containers must have at least one container")
-	}
+	require.ErrorContains(t, err, "containers must have at least one container")
 }
 
 func TestInvalidContainerSetDuplicateVolumeMounting(t *testing.T) {
@@ -69,9 +102,7 @@ containers:
     image: argoproj/argosay:v2
 `
 	err := validateContainerSetTemplate(invalidContainerSetDuplicateNames)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "volumeMounts[1].mountPath '/workspace' already mounted in volumeMounts.workspace")
-	}
+	require.ErrorContains(t, err, "volumeMounts[1].mountPath '/workspace' already mounted in volumeMounts.workspace")
 }
 
 func TestInvalidContainerSetDuplicateNames(t *testing.T) {
@@ -86,9 +117,8 @@ containers:
     image: argoproj/argosay:v2
 `
 	err := validateContainerSetTemplate(invalidContainerSetDuplicateNames)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "containers[1].name 'a' is not unique")
-	}
+	require.ErrorContains(t, err, "containers[1].name 'a' is not unique")
+
 }
 
 func TestInvalidContainerSetDependencyNotFound(t *testing.T) {
@@ -105,9 +135,7 @@ containers:
       - c
 `
 	err := validateContainerSetTemplate(invalidContainerSetDependencyNotFound)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "containers.b dependency 'c' not defined")
-	}
+	require.ErrorContains(t, err, "containers.b dependency 'c' not defined")
 }
 
 func TestInvalidContainerSetDependencyCycle(t *testing.T) {
@@ -126,9 +154,7 @@ containers:
       - a
 `
 	err := validateContainerSetTemplate(invalidContainerSetDependencyCycle)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "containers dependency cycle detected: b->a->b")
-	}
+	require.ErrorContains(t, err, "containers dependency cycle detected: b->a->b")
 }
 
 func TestValidContainerSet(t *testing.T) {
@@ -154,5 +180,5 @@ containers:
       - c
 `
 	err := validateContainerSetTemplate(validContainerSet)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

@@ -1,24 +1,38 @@
-import {Observable} from 'rxjs';
+import {EMPTY, from, Observable, of} from 'rxjs';
+import {catchError, filter, map, mergeMap, switchMap} from 'rxjs/operators';
 import * as models from '../../../models';
 import {Event, LogEntry, NodeStatus, Workflow, WorkflowList, WorkflowPhase} from '../../../models';
+import {ResubmitOpts, RetryOpts} from '../../../models';
 import {SubmitOpts} from '../../../models/submit-opts';
+import {uiUrl} from '../base';
 import {Pagination} from '../pagination';
+import {queryParams} from './utils';
 import requests from './requests';
 import {WorkflowDeleteResponse} from './responses';
+import {NameFilterKeys} from '../../workflows/components/workflow-filters/workflow-filters';
 
 function isString(value: any): value is string {
     return typeof value === 'string';
 }
 
-export class WorkflowsService {
-    public create(workflow: Workflow, namespace: string) {
+function isNodePendingOrRunning(node: NodeStatus) {
+    return node.phase === models.NODE_PHASE.PENDING || node.phase === models.NODE_PHASE.RUNNING;
+}
+
+function hasArtifactLogs(workflow: Workflow, nodeId: string, container: string) {
+    const node = workflow.status.nodes[nodeId];
+    return node?.outputs?.artifacts?.some(a => a.name === `${container}-logs`);
+}
+
+export const WorkflowsService = {
+    create(workflow: Workflow, namespace: string) {
         return requests
             .post(`api/v1/workflows/${namespace}`)
             .send({workflow})
             .then(res => res.body as Workflow);
-    }
+    },
 
-    public list(
+    list(
         namespace: string,
         phases: WorkflowPhase[],
         labels: string[],
@@ -30,6 +44,7 @@ export class WorkflowsService {
             'items.metadata.namespace',
             'items.metadata.creationTimestamp',
             'items.metadata.labels',
+            'items.metadata.annotations',
             'items.status.phase',
             'items.status.message',
             'items.status.finishedAt',
@@ -37,48 +52,48 @@ export class WorkflowsService {
             'items.status.estimatedDuration',
             'items.status.progress',
             'items.spec.suspend'
-        ]
+        ],
+        name?: string,
+        nameFilter?: NameFilterKeys
     ) {
-        const params = this.queryParams({phases, labels});
-        if (pagination) {
-            if (pagination.offset) {
-                params.push(`listOptions.continue=${pagination.offset}`);
-            }
-            if (pagination.limit) {
-                params.push(`listOptions.limit=${pagination.limit}`);
-            }
-        }
+        const params = queryParams({phases, labels, pagination, name, nameFilter});
         params.push(`fields=${fields.join(',')}`);
         return requests.get(`api/v1/workflows/${namespace}?${params.join('&')}`).then(res => res.body as WorkflowList);
-    }
+    },
 
-    public get(namespace: string, name: string) {
+    get(namespace: string, name: string) {
         return requests.get(`api/v1/workflows/${namespace}/${name}`).then(res => res.body as Workflow);
-    }
+    },
 
-    public watch(filter: {
+    getArchived(namespace: string, uid: string) {
+        return requests.get(`api/v1/archived-workflows/${uid}?namespace=${namespace}`).then(res => res.body as models.Workflow);
+    },
+
+    watch(query: {
         namespace?: string;
         name?: string;
         phases?: Array<WorkflowPhase>;
         labels?: Array<string>;
         resourceVersion?: string;
     }): Observable<models.kubernetes.WatchEvent<Workflow>> {
-        const url = `api/v1/workflow-events/${filter.namespace || ''}?${this.queryParams(filter).join('&')}`;
-        return requests.loadEventSource(url).map(data => data && (JSON.parse(data).result as models.kubernetes.WatchEvent<Workflow>));
-    }
+        const url = `api/v1/workflow-events/${query.namespace || ''}?${queryParams(query).join('&')}`;
+        return requests.loadEventSource(url).pipe(map(data => data && (JSON.parse(data).result as models.kubernetes.WatchEvent<Workflow>)));
+    },
 
-    public watchEvents(namespace: string, fieldSelector: string): Observable<Event> {
-        return requests.loadEventSource(`api/v1/stream/events/${namespace}?listOptions.fieldSelector=${fieldSelector}`).map(data => data && (JSON.parse(data).result as Event));
-    }
+    watchEvents(namespace: string, fieldSelector: string): Observable<Event> {
+        return requests
+            .loadEventSource(`api/v1/stream/events/${namespace}?listOptions.fieldSelector=${fieldSelector}`)
+            .pipe(map(data => data && (JSON.parse(data).result as Event)));
+    },
 
-    public watchFields(filter: {
+    watchFields(query: {
         namespace?: string;
         name?: string;
         phases?: Array<WorkflowPhase>;
         labels?: Array<string>;
         resourceVersion?: string;
     }): Observable<models.kubernetes.WatchEvent<Workflow>> {
-        const params = this.queryParams(filter);
+        const params = queryParams(query);
         const fields = [
             'result.object.metadata.name',
             'result.object.metadata.namespace',
@@ -93,75 +108,118 @@ export class WorkflowsService {
             'result.object.status.progress',
             'result.type',
             'result.object.metadata.labels',
+            'result.object.metadata.annotations',
             'result.object.spec.suspend'
         ];
         params.push(`fields=${fields.join(',')}`);
-        const url = `api/v1/workflow-events/${filter.namespace || ''}?${params.join('&')}`;
-        return requests.loadEventSource(url).map(data => data && (JSON.parse(data).result as models.kubernetes.WatchEvent<Workflow>));
-    }
+        const url = `api/v1/workflow-events/${query.namespace || ''}?${params.join('&')}`;
+        return requests.loadEventSource(url).pipe(map(data => data && (JSON.parse(data).result as models.kubernetes.WatchEvent<Workflow>)));
+    },
 
-    public retry(name: string, namespace: string) {
-        return requests.put(`api/v1/workflows/${namespace}/${name}/retry`).then(res => res.body as Workflow);
-    }
+    retry(name: string, namespace: string, opts?: RetryOpts) {
+        return requests
+            .put(`api/v1/workflows/${namespace}/${name}/retry`)
+            .send(opts)
+            .then(res => res.body as Workflow);
+    },
 
-    public resubmit(name: string, namespace: string) {
-        return requests.put(`api/v1/workflows/${namespace}/${name}/resubmit`).then(res => res.body as Workflow);
-    }
+    retryArchived(uid: string, namespace: string, opts?: RetryOpts) {
+        return requests
+            .put(`api/v1/archived-workflows/${uid}/retry`)
+            .send({namespace, ...opts})
+            .then(res => res.body as Workflow);
+    },
 
-    public suspend(name: string, namespace: string) {
+    resubmit(name: string, namespace: string, opts?: ResubmitOpts) {
+        return requests
+            .put(`api/v1/workflows/${namespace}/${name}/resubmit`)
+            .send(opts)
+            .then(res => res.body as Workflow);
+    },
+
+    resubmitArchived(uid: string, namespace: string, opts?: ResubmitOpts) {
+        return requests
+            .put(`api/v1/archived-workflows/${uid}/resubmit`)
+            .send({namespace, ...opts})
+            .then(res => res.body as Workflow);
+    },
+
+    suspend(name: string, namespace: string) {
         return requests.put(`api/v1/workflows/${namespace}/${name}/suspend`).then(res => res.body as Workflow);
-    }
+    },
 
-    public resume(name: string, namespace: string) {
-        return requests.put(`api/v1/workflows/${namespace}/${name}/resume`).then(res => res.body as Workflow);
-    }
+    set(name: string, namespace: string, nodeFieldSelector: string, outputParameters: string) {
+        return requests
+            .put(`api/v1/workflows/${namespace}/${name}/set`)
+            .send({nodeFieldSelector, outputParameters})
+            .then(res => res.body as Workflow);
+    },
 
-    public stop(name: string, namespace: string) {
+    resume(name: string, namespace: string, nodeFieldSelector: string) {
+        return requests
+            .put(`api/v1/workflows/${namespace}/${name}/resume`)
+            .send({nodeFieldSelector})
+            .then(res => res.body as Workflow);
+    },
+
+    stop(name: string, namespace: string) {
         return requests.put(`api/v1/workflows/${namespace}/${name}/stop`).then(res => res.body as Workflow);
-    }
+    },
 
-    public terminate(name: string, namespace: string) {
+    terminate(name: string, namespace: string) {
         return requests.put(`api/v1/workflows/${namespace}/${name}/terminate`).then(res => res.body as Workflow);
-    }
+    },
 
-    public delete(name: string, namespace: string): Promise<WorkflowDeleteResponse> {
+    delete(name: string, namespace: string): Promise<WorkflowDeleteResponse> {
         return requests.delete(`api/v1/workflows/${namespace}/${name}`).then(res => res.body as WorkflowDeleteResponse);
-    }
+    },
 
-    public submit(kind: string, name: string, namespace: string, submitOptions?: SubmitOpts) {
+    deleteArchived(uid: string, namespace: string): Promise<WorkflowDeleteResponse> {
+        if (namespace === '') {
+            return requests.delete(`api/v1/archived-workflows/${uid}`).then(res => res.body as WorkflowDeleteResponse);
+        } else {
+            return requests.delete(`api/v1/archived-workflows/${uid}?namespace=${namespace}`).then(res => res.body as WorkflowDeleteResponse);
+        }
+    },
+
+    submit(kind: string, name: string, namespace: string, submitOptions?: SubmitOpts) {
         return requests
             .post(`api/v1/workflows/${namespace}/submit`)
             .send({namespace, resourceKind: kind, resourceName: name, submitOptions})
             .then(res => res.body as Workflow);
-    }
+    },
 
-    public getContainerLogsFromCluster(workflow: Workflow, nodeId: string, container: string): Observable<LogEntry> {
+    getContainerLogsFromCluster(workflow: Workflow, podName: string, container: string, grep: string): Observable<LogEntry> {
         const namespace = workflow.metadata.namespace;
         const name = workflow.metadata.name;
-        const podLogsURL = `api/v1/workflows/${namespace}/${name}/log?logOptions.container=${container}&logOptions.follow=true${nodeId ? `&podName=${nodeId}` : ''}`;
-        return requests
-            .loadEventSource(podLogsURL)
-            .filter(line => !!line)
-            .map(line => JSON.parse(line).result as LogEntry)
-            .filter(e => isString(e.content))
-            .catch(() => {
+        const podLogsURL = uiUrl(
+            `api/v1/workflows/${namespace}/${name}/log?logOptions.container=${container}&grep=${grep}&logOptions.follow=true${podName ? `&podName=${podName}` : ''}`
+        );
+        return requests.loadEventSource(podLogsURL).pipe(
+            filter(line => !!line),
+            map(line => JSON.parse(line).result as LogEntry),
+            filter(e => isString(e.content)),
+            catchError(() => {
                 // When an error occurs on an observable, RxJS is hard-coded to unsubscribe from the stream.  In the case
                 // that the connection to the server was interrupted while the node is still pending or running, this is not
                 // correct since we actually want the EventSource to re-connect and continue streaming logs.  In the event
                 // that the pod has completed, then we want to allow the unsubscribe to happen since no additional logs exist.
-                return Observable.fromPromise(this.isWorkflowNodePendingOrRunning(workflow, nodeId)).switchMap(isPendingOrRunning => {
-                    if (isPendingOrRunning) {
-                        return this.getContainerLogsFromCluster(workflow, nodeId, container);
-                    }
+                return from(this.isWorkflowNodePendingOrRunning(workflow, podName)).pipe(
+                    switchMap(isPendingOrRunning => {
+                        if (isPendingOrRunning) {
+                            return this.getContainerLogsFromCluster(workflow, podName, container, grep);
+                        }
 
-                    // If our workflow is completed, then simply complete the Observable since nothing else
-                    // should be omitted
-                    return Observable.empty();
-                });
-            });
-    }
+                        // If our workflow is completed, then simply complete the Observable since nothing else
+                        // should be omitted
+                        return EMPTY;
+                    })
+                );
+            })
+        );
+    },
 
-    public async isWorkflowNodePendingOrRunning(workflow: Workflow, nodeId?: string) {
+    async isWorkflowNodePendingOrRunning(workflow: Workflow, nodeId?: string) {
         // We always refresh the workflow rather than inspecting the state locally since it doubles
         // as a check to determine whether or not the API is currently reachable
         const updatedWorkflow = await this.get(workflow.metadata.namespace, workflow.metadata.name);
@@ -169,24 +227,30 @@ export class WorkflowsService {
         if (!node) {
             return !updatedWorkflow.status || ['Pending', 'Running'].includes(updatedWorkflow.status.phase);
         }
-        return this.isNodePendingOrRunning(node);
-    }
+        return isNodePendingOrRunning(node);
+    },
 
-    public getContainerLogsFromArtifact(workflow: Workflow, nodeId: string, container: string, archived: boolean) {
-        return Observable.of(this.hasArtifactLogs(workflow, nodeId, container))
-            .switchMap(hasArtifactLogs => {
-                if (!hasArtifactLogs) {
+    getContainerLogsFromArtifact(workflow: Workflow, nodeId: string, container: string, grep: string, archived: boolean): Observable<LogEntry> {
+        return of(hasArtifactLogs(workflow, nodeId, container)).pipe(
+            switchMap(isArtifactLogs => {
+                if (!isArtifactLogs) {
+                    if (!nodeId) {
+                        throw new Error('Should specify a node when we get archived logs');
+                    }
                     throw new Error('no artifact logs are available');
                 }
 
-                return Observable.fromPromise(requests.get(this.getArtifactLogsUrl(workflow, nodeId, container, archived)));
-            })
-            .mergeMap(r => r.text.split('\n'))
-            .map(content => ({content} as LogEntry));
-    }
+                return from(requests.get(this.getArtifactLogsPath(workflow, nodeId, container, archived)));
+            }),
+            mergeMap(r => r.text.split('\n')),
+            map(content => ({content, podName: workflow.status.nodes[nodeId].displayName}) as LogEntry),
+            filter(x => !!x.content.match(grep))
+        );
+    },
 
-    public getContainerLogs(workflow: Workflow, nodeId: string, container: string, archived: boolean): Observable<LogEntry> {
-        const getLogsFromArtifact = () => this.getContainerLogsFromArtifact(workflow, nodeId, container, archived);
+    getContainerLogs(workflow: Workflow, podName: string, nodeId: string, container: string, grep: string, archived: boolean): Observable<LogEntry> {
+        const getLogsFromArtifact = () => this.getContainerLogsFromArtifact(workflow, nodeId, container, grep, archived);
+        const getLogsFromCluster = () => this.getContainerLogsFromCluster(workflow, podName, container, grep);
 
         // If our workflow is archived, don't even bother inspecting the cluster for logs since it's likely
         // that the Workflow and associated pods have been deleted
@@ -194,63 +258,28 @@ export class WorkflowsService {
             return getLogsFromArtifact();
         }
 
-        return this.getContainerLogsFromCluster(workflow, nodeId, container).catch(getLogsFromArtifact);
+        // return archived log if main container is finished and has artifact
+        return from(this.isWorkflowNodePendingOrRunning(workflow, nodeId)).pipe(
+            switchMap(isPendingOrRunning => {
+                if (!isPendingOrRunning && hasArtifactLogs(workflow, nodeId, container) && container === 'main') {
+                    return getLogsFromArtifact().pipe(catchError(getLogsFromCluster));
+                }
+                return getLogsFromCluster().pipe(catchError(getLogsFromArtifact));
+            })
+        );
+    },
+
+    getArtifactLogsPath(workflow: Workflow, nodeId: string, container: string, archived: boolean) {
+        return this.artifactPath(workflow, nodeId, container + '-logs', archived, false);
+    },
+
+    getArtifactDownloadUrl(workflow: Workflow, nodeId: string, artifactName: string, archived: boolean, isInput: boolean) {
+        return uiUrl(this.artifactPath(workflow, nodeId, artifactName, archived, isInput));
+    },
+
+    artifactPath(workflow: Workflow, nodeId: string, artifactName: string, archived: boolean, isInput: boolean) {
+        return `artifact-files/${workflow.metadata.namespace}/${archived ? 'archived-workflows' : 'workflows'}/${
+            archived ? workflow.metadata.uid : workflow.metadata.name
+        }/${nodeId}/${isInput ? 'inputs' : 'outputs'}/${artifactName}`;
     }
-
-    public getArtifactLogsUrl(workflow: Workflow, nodeId: string, container: string, archived: boolean) {
-        return this.getArtifactDownloadUrl(workflow, nodeId, container + '-logs', archived, true);
-    }
-
-    public getArtifactDownloadUrl(workflow: Workflow, nodeId: string, artifactName: string, archived: boolean, isInput: boolean) {
-        if (archived) {
-            const endpoint = isInput ? 'input-artifacts-by-uid' : 'artifacts-by-uid';
-            return `${endpoint}/${workflow.metadata.uid}/${nodeId}/${encodeURIComponent(artifactName)}`;
-        } else {
-            const endpoint = isInput ? 'input-artifacts' : 'artifacts';
-            return `${endpoint}/${workflow.metadata.namespace}/${workflow.metadata.name}/${nodeId}/${encodeURIComponent(artifactName)}`;
-        }
-    }
-
-    private isNodePendingOrRunning(node: NodeStatus) {
-        return node.phase === models.NODE_PHASE.PENDING || node.phase === models.NODE_PHASE.RUNNING;
-    }
-
-    private hasArtifactLogs(workflow: Workflow, nodeId: string, container: string) {
-        const node = workflow.status.nodes[nodeId];
-
-        if (!node || !node.outputs) {
-            return false;
-        }
-
-        return node.outputs.artifacts.findIndex(a => a.name === `${container}-logs`) !== -1;
-    }
-
-    private queryParams(filter: {namespace?: string; name?: string; phases?: Array<WorkflowPhase>; labels?: Array<string>; resourceVersion?: string}) {
-        const queryParams: string[] = [];
-        if (filter.name) {
-            queryParams.push(`listOptions.fieldSelector=metadata.name=${filter.name}`);
-        }
-        const labelSelector = this.labelSelectorParams(filter.phases, filter.labels);
-        if (labelSelector.length > 0) {
-            queryParams.push(`listOptions.labelSelector=${labelSelector}`);
-        }
-        if (filter.resourceVersion) {
-            queryParams.push(`listOptions.resourceVersion=${filter.resourceVersion}`);
-        }
-        return queryParams;
-    }
-
-    private labelSelectorParams(phases?: Array<WorkflowPhase>, labels?: Array<string>) {
-        let labelSelector = '';
-        if (phases && phases.length > 0) {
-            labelSelector = `workflows.argoproj.io/phase in (${phases.join(',')})`;
-        }
-        if (labels && labels.length > 0) {
-            if (labelSelector.length > 0) {
-                labelSelector += ',';
-            }
-            labelSelector += labels.join(',');
-        }
-        return labelSelector;
-    }
-}
+};

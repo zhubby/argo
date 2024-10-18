@@ -1,15 +1,17 @@
 owners:
-- alexec
-
-reviewers:
+- sarabala1979
 - terrytangyuan
-- xianlubird
 
 approvers:
+- agilgur5
 - alexec
 - alexmt
-- dtaniwaki
 - edlee2121
+- isubasinghe
 - jessesuen
-- sarabala1979
-- simster7
+- joibel
+- juliev0
+- tczhao
+
+reviewers:
+- shuangkun

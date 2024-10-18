@@ -13,19 +13,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	"github.com/argoproj/argo-workflows/v3/pkg/client/clientset/versioned/typed/workflow/v1alpha1"
+	"github.com/argoproj/argo-workflows/v3/workflow/common"
 	"github.com/argoproj/argo-workflows/v3/workflow/hydrator"
+	"github.com/argoproj/argo-workflows/v3/workflow/util"
 )
 
 type Then struct {
-	t          *testing.T
-	wf         *wfv1.Workflow
-	cronWf     *wfv1.CronWorkflow
-	client     v1alpha1.WorkflowInterface
-	cronClient v1alpha1.CronWorkflowInterface
-	hydrator   hydrator.Interface
-	kubeClient kubernetes.Interface
+	t           *testing.T
+	wf          *wfv1.Workflow
+	cronWf      *wfv1.CronWorkflow
+	client      v1alpha1.WorkflowInterface
+	wftsClient  v1alpha1.WorkflowTaskSetInterface
+	cronClient  v1alpha1.CronWorkflowInterface
+	hydrator    hydrator.Interface
+	kubeClient  kubernetes.Interface
+	bearerToken string
 }
 
 func (t *Then) ExpectWorkflow(block func(t *testing.T, metadata *metav1.ObjectMeta, status *wfv1.WorkflowStatus)) *Then {
@@ -82,9 +89,15 @@ func (t *Then) ExpectWorkflowNode(selector func(status wfv1.NodeStatus) bool, f 
 		if n != nil {
 			_, _ = fmt.Println("Found node", "id="+n.ID, "type="+n.Type)
 			if n.Type == wfv1.NodeTypePod {
+				wf := &wfv1.Workflow{
+					ObjectMeta: *metadata,
+				}
+				version := util.GetWorkflowPodNameVersion(wf)
+				podName := util.GeneratePodName(t.wf.Name, n.Name, util.GetTemplateFromNode(*n), n.ID, version)
+
 				var err error
 				ctx := context.Background()
-				p, err = t.kubeClient.CoreV1().Pods(t.wf.Namespace).Get(ctx, n.ID, metav1.GetOptions{})
+				p, err = t.kubeClient.CoreV1().Pods(t.wf.Namespace).Get(ctx, podName, metav1.GetOptions{})
 				if err != nil {
 					if !apierr.IsNotFound(err) {
 						t.t.Error(err)
@@ -92,10 +105,11 @@ func (t *Then) ExpectWorkflowNode(selector func(status wfv1.NodeStatus) bool, f 
 					p = nil // i did not expect to need to nil the pod, but here we are
 				}
 			}
+			f(tt, n, p)
 		} else {
 			_, _ = fmt.Println("Did not find node")
+			t.t.Error("Did not find expected node")
 		}
-		f(tt, n, p)
 	})
 }
 
@@ -173,6 +187,94 @@ func (t *Then) ExpectAuditEvents(filter func(event apiv1.Event) bool, num int, b
 	return t
 }
 
+func (t *Then) ExpectPVCDeleted() *Then {
+	t.t.Helper()
+	timeout := defaultTimeout
+	_, _ = fmt.Println("Checking", timeout.String(), "for expecting PVCs deletion")
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			t.t.Errorf("timeout after %v waiting for condition", timeout)
+			return t
+		default:
+			num := len(t.wf.Status.PersistentVolumeClaims)
+			pvcClient := t.kubeClient.CoreV1().PersistentVolumeClaims(t.wf.ObjectMeta.Namespace)
+			for _, p := range t.wf.Status.PersistentVolumeClaims {
+				_, err := pvcClient.Get(ctx, p.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
+				if err == nil {
+					break
+				} else if apierr.IsNotFound(err) {
+					num--
+				} else {
+					t.t.Fatal(err)
+					return t
+				}
+			}
+			if num == 0 {
+				return t
+			}
+		}
+	}
+}
+
+func (t *Then) ExpectArtifact(nodeName string, artifactName string, bucketName string, f func(t *testing.T, object minio.ObjectInfo, err error)) {
+	t.t.Helper()
+
+	if nodeName == "-" {
+		nodeName = t.wf.Name
+	}
+
+	n, err := t.wf.GetNodeByName(nodeName)
+	if err != nil {
+		t.t.Error("was unable to get node by name")
+	}
+	a := n.GetOutputs().GetArtifactByName(artifactName)
+	key, _ := a.GetKey()
+
+	t.ExpectArtifactByKey(key, bucketName, f)
+}
+
+func (t *Then) ExpectArtifactByKey(key string, bucketName string, f func(t *testing.T, object minio.ObjectInfo, err error)) {
+	t.t.Helper()
+
+	c, err := minio.New("localhost:9000", &minio.Options{
+		Creds: credentials.NewStaticV4("admin", "password", ""),
+	})
+
+	if err != nil {
+		t.t.Error(err)
+	}
+
+	object, err := c.StatObject(context.Background(), bucketName, key, minio.StatObjectOptions{})
+	f(t.t, object, err)
+}
+
+func (t *Then) ExpectPods(f func(t *testing.T, pods []apiv1.Pod)) *Then {
+	t.t.Helper()
+
+	list, err := t.kubeClient.CoreV1().Pods(t.wf.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: common.LabelKeyWorkflow + "=" + t.wf.Name})
+	if err != nil {
+		t.t.Fatal(err)
+	}
+
+	f(t.t, list.Items)
+
+	return t
+}
+
+func (t *Then) ExpectWorkflowTaskSet(block func(t *testing.T, wfts *wfv1.WorkflowTaskSet)) *Then {
+	t.t.Helper()
+	ctx := context.Background()
+	wfts, err := t.wftsClient.Get(ctx, t.wf.Name, metav1.GetOptions{})
+	if err != nil {
+		t.t.Fatal(err)
+	}
+	block(t.t, wfts)
+	return t
+}
+
 func (t *Then) RunCli(args []string, block func(t *testing.T, output string, err error)) *Then {
 	t.t.Helper()
 	output, err := Exec("../../dist/argo", append([]string{"-n", Namespace}, args...)...)
@@ -182,11 +284,13 @@ func (t *Then) RunCli(args []string, block func(t *testing.T, output string, err
 
 func (t *Then) When() *When {
 	return &When{
-		t:          t.t,
-		client:     t.client,
-		cronClient: t.cronClient,
-		hydrator:   t.hydrator,
-		wf:         t.wf,
-		kubeClient: t.kubeClient,
+		t:           t.t,
+		client:      t.client,
+		wftsClient:  t.wftsClient,
+		cronClient:  t.cronClient,
+		hydrator:    t.hydrator,
+		wf:          t.wf,
+		kubeClient:  t.kubeClient,
+		bearerToken: t.bearerToken,
 	}
 }

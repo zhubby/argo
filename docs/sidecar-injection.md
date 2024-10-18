@@ -11,12 +11,25 @@ You will minimize problems by not using Istio with Argo Workflows.
 
 See [#1282](https://github.com/argoproj/argo-workflows/issues/1282).
 
-## How We Kill Sidecars
+## Support Matrix
+
+Key:
+
+* Any - we can kill any image
+* KubectlExec - we kill images by running `kubectl exec`
+
+| Executor | Sidecar | Injected Sidecar |
+|---|---|---|
+| `emissary` | Any | KubectlExec |
+
+## How We Kill Sidecars Using `kubectl exec`
+
+> v3.1 and after
 
 Kubernetes does not provide a way to kill a single container. You can delete a pod, but this kills all containers, and loses all information
 and logs of that pod.
 
-Instead, try to mimic the Kubernetes termination behaviour, which is:
+Instead, try to mimic the Kubernetes termination behavior, which is:
 
 1. SIGTERM PID 1
 1. Wait for the pod's `terminateGracePeriodSeconds` (30s by default).
@@ -27,18 +40,20 @@ The following are not supported:
 * `preStop`
 * `STOPSIGNAL`
 
-### Support Matrix
+To do this, it must be possible to run a `kubectl exec` command that kills the injected sidecar. By default it runs `/bin/sh -c 'kill 1'`. This can fail:
 
-Key:
+1. No `/bin/sh`.
+2. Process is not running as PID 1 (which is becoming the default these days due to `runAsNonRoot`).
+3. Process does not correctly respond to `kill 1` (e.g. some shell script weirdness).
 
-* Any - we can kill any image
-* Shell - we can only kill images with `/bin/sh` installed on them (e.g. Debian)
-* None - we cannot kill these images
+You can override the kill command by using a pod annotation (where `%d` is the signal number), for example:
 
-| Executor | Sidecar | Injected Sidecar | 
-|---|---|---| 
-| `docker` | Any | Any | 
-| `emissary` | Any | None | 
-| `k8sapi` | Shell | Shell | 
-| `kubelet` | Shell | Shell | 
-| `pns` | Any | Any | 
+```yaml
+spec:
+  podMetadata:
+    annotations:
+      workflows.argoproj.io/kill-cmd-istio-proxy: '["pilot-agent", "request", "POST", "quitquitquit"]'
+      workflows.argoproj.io/kill-cmd-linkerd-proxy: '["/usr/lib/linkerd/linkerd-await","sleep","1","--shutdown"]'
+      workflows.argoproj.io/kill-cmd-vault-agent: '["sh", "-c", "kill -%d 1"]'
+      workflows.argoproj.io/kill-cmd-sidecar: '["sh", "-c", "kill -%d $(pidof entrypoint.sh)"]'
+```

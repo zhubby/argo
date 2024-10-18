@@ -7,6 +7,9 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: coinflip-
+  annotations:
+    workflows.argoproj.io/description: |
+      This is an example of coin flip defined as a sequence of conditional steps.\
 spec:
   entrypoint: coinflip
   templates:

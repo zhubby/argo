@@ -26,3 +26,14 @@
     background-color: transparent;
     border: 0;
 }
+
+.wf-filters-container__content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#top-bar__filter-list {
+    column-count: 1;
+}

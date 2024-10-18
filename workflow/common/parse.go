@@ -8,6 +8,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	kjson "sigs.k8s.io/json"
 	"sigs.k8s.io/yaml"
 
 	wf "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow"
@@ -22,7 +24,7 @@ type ParseResult struct {
 }
 
 func ParseObjects(body []byte, strict bool) []ParseResult {
-	res := []ParseResult{}
+	var res []ParseResult
 	if jsonpkg.IsJSON(body) {
 		un := &unstructured.Unstructured{}
 		err := jsonpkg.Unmarshal(body, un)
@@ -34,15 +36,19 @@ func ParseObjects(body []byte, strict bool) []ParseResult {
 		return append(res, ParseResult{v, err})
 	}
 
-	for _, text := range yamlSeparator.Split(string(body), -1) {
+	for i, text := range yamlSeparator.Split(string(body), -1) {
 		if strings.TrimSpace(text) == "" {
 			continue
 		}
 		un := &unstructured.Unstructured{}
 		err := yaml.Unmarshal([]byte(text), un)
-		if un.GetKind() != "" && err != nil {
-			// only return an error if this is a kubernetes object, otherwise, ignore
-			res = append(res, ParseResult{nil, err})
+		if err != nil {
+			// Only return an error if this is a kubernetes object, otherwise, print the error
+			if un.GetKind() != "" {
+				res = append(res, ParseResult{nil, err})
+			} else {
+				log.Errorf("yaml file at index %d is not valid: %s", i, err)
+			}
 			continue
 		}
 		v, err := toWorkflowTypeYAML([]byte(text), un.GetKind(), strict)
@@ -66,6 +72,8 @@ func objectForKind(kind string) metav1.Object {
 		return &wfv1.WorkflowEventBinding{}
 	case wf.WorkflowTemplateKind:
 		return &wfv1.WorkflowTemplate{}
+	case wf.WorkflowTaskSetKind:
+		return &wfv1.WorkflowTaskSet{}
 	default:
 		return &metav1.ObjectMeta{}
 	}
@@ -90,7 +98,19 @@ func toWorkflowTypeYAML(body []byte, kind string, strict bool) (metav1.Object, e
 func toWorkflowTypeJSON(body []byte, kind string, strict bool) (metav1.Object, error) {
 	v := objectForKind(kind)
 	if strict {
-		return v, jsonpkg.UnmarshalStrict(body, v)
+		var strictErrs []error
+		strictJSONErrs, err := kjson.UnmarshalStrict(body, v)
+		if err != nil {
+			// fatal decoding error, not due to strictness
+			return v, err
+		}
+		strictErrs = append(strictErrs, strictJSONErrs...)
+
+		if len(strictErrs) > 0 {
+			// return the successfully decoded object along with the strict errors
+			return v, runtime.NewStrictDecodingError(strictErrs)
+		}
+		return v, err
 	}
 
 	return v, jsonpkg.Unmarshal(body, v)

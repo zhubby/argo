@@ -1,4 +1,4 @@
-// +build functional
+//go:build functional
 
 package e2e
 
